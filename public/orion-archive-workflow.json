@@ -1,0 +1,90 @@
+{
+  "name": "Orion Archive — Quality Astronomy News",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.spaceflightnewsapi.net/v4/articles/",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "limit",    "value": "200" },
+            { "name": "ordering", "value": "-published_at" }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Fetch Space Articles",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = $input.first().json.results || [];\n\n// ── Scoring ────────────────────────────────────────────────────\n// Returns a relevance score for how \"important in astronomy\" an article is.\nfunction scoreArticle(d) {\n  const text = ((d.title || '') + ' ' + (d.summary || '')).toLowerCase();\n  let score = 0;\n\n  // HIGH-VALUE astronomy topics (score +3 each)\n  const high = [\n    /\\bjwst\\b|james webb|webb telescope|webb space telescope/,\n    /\\bhubble\\b/,\n    /asteroid|\\bcomet\\b|\\bmeteor\\b|near-earth|\\bneo\\b|apophis|potentially hazardous/,\n    /\\bmars\\b.{0,30}(mission|rover|lander|probe)|perseverance|curiosity rover|ingenuity/,\n    /artemis|lunar.*mission|moon.*mission|moon.*lander|lunar.*lander/,\n    /\\biss\\b|space station|spacewalk|\\beva\\b|extravehicular/,\n    /exoplanet|black hole|neutron star|\\bpulsar\\b|\\bquasar\\b|supernova|gamma.ray burst/,\n    /nebula|\\bgalaxy\\b|dark matter|dark energy|gravitational wave/,\n    /telescope.{0,20}discover|discover.{0,20}telescope|new astronomical|new discovery in space/,\n    /rocket.*launch|launch.*rocket|liftoff|blastoff|successful.*launch|launch.*success/,\n    /starship|falcon 9|new glenn|ariane 6|vulcan|electron rocket|new shepard.*flight/,\n    /solar flare|aurora|cme|coronal mass|geomagnetic storm/,\n    /james webb|\\bjwst\\b|spitzer|chandra x-ray|\\bvla\\b|very large array/,\n  ];\n\n  // MEDIUM-VALUE topics (score +1 each)\n  const medium = [\n    /spacecraft|\\bprobe\\b|orbiter|\\blander\\b|\\bflyer\\b/,\n    /astronaut|cosmonaut|crew dragon|soyuz.*crew|crew.*soyuz/,\n    /\\bnasa\\b|\\besa\\b|\\bjax\\b|\\bisro\\b|\\broscosmos\\b|\\bcsa\\b/,\n    /satellite.*launch|launch.*satellite|smallsat|cubesat/,\n    /solar system|\\bsun\\b|\\bjupiter\\b|\\bsaturn\\b|\\bvenus\\b|\\bmercury\\b|\\buranus\\b|\\bneptune\\b/,\n    /space telescope|ground telescope|observatory/,\n    /planetary science|astrophysics|cosmology|astrobiolog/,\n    /reusable rocket|stage.*land|booster.*catch|reentry/,\n  ];\n\n  // NOISE — business/policy (score -2 each)\n  const noise = [\n    /\\$[\\d.]+\\s*(billion|million)|valuation|funding round|series [a-f]\\b|venture capital/,\n    /contract awarded|contract for|acquisition|merger|\\bipo\\b|public offering/,\n    /budget.*approp|approp.*budget|congressional|senate.*vote|house.*vote/,\n    /\\bceo\\b|chief executive|appointed.*director|director.*appointed|executive.*hire/,\n    /weather satellite|earth.*observation.*commercial|imagery.*subscription/,\n    /insurance|lawsuit|patent|trademark/,\n  ];\n\n  for (const re of high)   if (re.test(text)) score += 3;\n  for (const re of medium) if (re.test(text)) score += 1;\n  for (const re of noise)  if (re.test(text)) score -= 2;\n\n  return score;\n}\n\n// ── Categorisation ─────────────────────────────────────────────\nfunction getCategory(d) {\n  const text = ((d.title || '') + ' ' + (d.summary || '')).toLowerCase();\n  if (/picture of the day|\\bapod\\b|image of the day|astronomy picture/.test(text)) return 'APOD';\n  if (/asteroid|\\bcomet\\b|\\bmeteor\\b|near-earth|\\bneo\\b|apophis|potentially hazardous/.test(text)) return 'Asteroid';\n  if (/\\biss\\b|international space station|spacewalk|\\beva\\b|extravehicular/.test(text)) return 'ISS';\n  if (/launch|rocket|liftoff|blastoff|starship|falcon|ariane|soyuz|new glenn|vulcan|electron/.test(text)) return 'Launch';\n  return 'General';\n}\n\n// ── Filter ─────────────────────────────────────────────────────\n// Keep only articles that score >= 2 (at least one medium + one more, or one high topic)\nconst now = new Date().toISOString();\n\nconst kept = results\n  .map(d => ({ d, score: scoreArticle(d) }))\n  .filter(({ score }) => score >= 2)\n  .sort((a, b) => b.score - a.score);\n\nif (kept.length === 0) {\n  throw new Error('No articles passed the relevance filter. The API may have returned only business/policy news.');\n}\n\nreturn kept.map(({ d }) => ({\n  json: {\n    timestamp:      now,\n    type:           'archive',\n    source:         d.news_site    || '',\n    title:          d.title        || '',\n    aiSummary:      d.summary      || '',\n    tweet:          '',\n    localNote:      '',\n    category:       getCategory(d),\n    localRelevance: '',\n    url:            d.url          || '',\n    imageUrl:       d.image_url    || '',\n    publishedAt:    d.published_at || '',\n  }\n}));"
+      },
+      "name": "Filter & Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1hqV9_Y7k6ja3buGTMIpY9DV-D4dpPPe1jSfsxHFOIs4",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "1043900561",
+          "mode": "id"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp":      "={{ $json.timestamp }}",
+            "type":           "={{ $json.type }}",
+            "source":         "={{ $json.source }}",
+            "title":          "={{ $json.title }}",
+            "aiSummary":      "={{ $json.aiSummary }}",
+            "tweet":          "={{ $json.tweet }}",
+            "localNote":      "={{ $json.localNote }}",
+            "category":       "={{ $json.category }}",
+            "localRelevance": "={{ $json.localRelevance }}",
+            "url":            "={{ $json.url }}",
+            "imageUrl":       "={{ $json.imageUrl }}",
+            "publishedAt":    "={{ $json.publishedAt }}"
+          }
+        },
+        "options": {}
+      },
+      "name": "Write to Archive Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [[{ "node": "Fetch Space Articles", "type": "main", "index": 0 }]]
+    },
+    "Fetch Space Articles": {
+      "main": [[{ "node": "Filter & Score", "type": "main", "index": 0 }]]
+    },
+    "Filter & Score": {
+      "main": [[{ "node": "Write to Archive Sheet", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

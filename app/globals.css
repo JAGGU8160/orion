@@ -2,28 +2,48 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ════════════════════════════════════════════════════════════
+   DARK THEME — unchanged premium space aesthetic
+   ════════════════════════════════════════════════════════════ */
 :root,
 [data-theme="dark"] {
   color-scheme: dark;
+
+  /* Surfaces */
   --bg: 5 6 15;
   --bg-deep: 10 14 39;
   --bg-card: 15 20 48;
   --bg-border: 30 37 80;
+  --bg-border2: 45 55 110;
+
+  /* Type */
   --ink: 226 232 240;
   --ink-muted: 148 163 184;
   --ink-dim: 100 116 139;
+
+  /* Brand accents */
   --neon-cyan: 34 211 238;
   --neon-violet: 167 139 250;
   --neon-pink: 244 114 182;
   --neon-amber: 251 191 36;
+
+  /* Category tokens — brighter for dark backgrounds */
+  --cat-launch: 96 165 250;        /* sky-400 */
+  --cat-discoveries: 167 139 250;  /* violet-400 */
+  --cat-asteroid: 251 146 60;      /* orange-400 */
+  --cat-sky: 129 140 248;          /* indigo-400 */
+  --cat-apod: 34 211 238;          /* cyan-400 */
+  --cat-iss: 45 212 191;           /* teal-400 */
+
+  /* Page background atmosphere */
   --starfield-alpha: 1;
   --bg-overlay:
     radial-gradient(1200px 600px at 20% -10%, rgba(167, 139, 250, 0.18), transparent 60%),
     radial-gradient(1000px 500px at 90% 10%, rgba(34, 211, 238, 0.14), transparent 60%),
     radial-gradient(800px 400px at 50% 100%, rgba(244, 114, 182, 0.08), transparent 60%),
     linear-gradient(180deg, #05060f 0%, #0a0e27 100%);
-  --card-bg: rgb(15 20 48 / 0.72);
-  --card-border: rgb(30 37 80);
+
+  /* Card elevation */
   --card-shadow:
     0 8px 32px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
@@ -31,49 +51,76 @@
     0 12px 40px rgba(0, 0, 0, 0.5),
     0 0 20px rgb(34 211 238 / 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  --card-glow-border: rgb(34 211 238 / 0.5);
   --card-glow-shadow:
     0 0 20px rgb(34 211 238 / 0.32),
     0 0 60px rgb(34 211 238 / 0.16),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+  /* Section stripe — no-op in dark */
+  --section-alt-bg: transparent;
+  --section-alt-border: transparent;
 }
 
+/* ════════════════════════════════════════════════════════════
+   LIGHT THEME — completely rebuilt for premium intelligence-platform feel
+   ════════════════════════════════════════════════════════════ */
 [data-theme="light"] {
   color-scheme: light;
-  --bg: 239 248 255;
-  --bg-deep: 224 242 254;
-  --bg-card: 255 255 255;
-  --bg-border: 215 225 240;
-  --ink: 8 22 45;
-  --ink-muted: 71 85 105;
-  --ink-dim: 148 163 184;
-  --neon-cyan: 14 116 144;
-  --neon-violet: 91 33 182;
-  --neon-pink: 190 24 93;
-  --neon-amber: 180 83 9;
+
+  /* Surfaces */
+  --bg: 248 250 252;       /* #F8FAFC slate-50 — page */
+  --bg-deep: 241 245 249;  /* #F1F5F9 slate-100 — section stripe */
+  --bg-card: 255 255 255;  /* #FFFFFF — cards */
+  --bg-border: 226 232 240; /* #E2E8F0 slate-200 */
+  --bg-border2: 198 206 226;
+
+  /* Type */
+  --ink: 15 23 42;         /* #0F172A slate-900 */
+  --ink-muted: 71 85 105;  /* #475569 slate-600 */
+  --ink-dim: 148 163 184;  /* #94A3B8 slate-400 */
+
+  /* Brand accents */
+  --neon-cyan: 37 99 235;    /* #2563EB primary blue */
+  --neon-violet: 124 58 237; /* #7C3AED astronomy purple */
+  --neon-pink: 219 39 119;   /* #DB2777 */
+  --neon-amber: 234 88 12;   /* #EA580C orange */
+
+  /* Category tokens — saturated for light backgrounds */
+  --cat-launch: 37 99 235;      /* blue-600 */
+  --cat-discoveries: 124 58 237; /* violet-600 */
+  --cat-asteroid: 234 88 12;     /* orange-600 */
+  --cat-sky: 79 70 229;          /* indigo-600 */
+  --cat-apod: 8 145 178;         /* cyan-700 */
+  --cat-iss: 13 148 136;         /* teal-600 */
+
+  /* Page background — minimal, almost imperceptible */
   --starfield-alpha: 0;
   --bg-overlay:
-    radial-gradient(900px 700px at 88% -8%, rgba(254, 215, 170, 0.7), transparent 55%),
-    radial-gradient(800px 600px at 12% 90%, rgba(186, 230, 253, 0.65), transparent 60%),
-    radial-gradient(700px 500px at 50% 35%, rgba(221, 214, 254, 0.35), transparent 60%),
-    linear-gradient(170deg, #e0f2fe 0%, #f0f9ff 35%, #fff7ed 100%);
-  --card-bg: rgb(255 255 255 / 0.82);
-  --card-border: rgb(14 116 144 / 0.14);
-  --card-shadow: none;
+    radial-gradient(900px 600px at 88% -8%, rgba(124, 58, 237, 0.04), transparent 70%),
+    radial-gradient(800px 600px at 12% 95%, rgba(37, 99, 235, 0.04), transparent 70%),
+    linear-gradient(180deg, #F8FAFC 0%, #F8FAFC 100%);
+
+  /* Card elevation — subtle resting, expanded hover */
+  --card-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 1px 3px rgba(15, 23, 42, 0.05);
   --card-hover-shadow:
-    0 2px 4px rgba(15, 30, 50, 0.04),
-    0 10px 24px rgba(14, 116, 144, 0.16),
-    0 24px 48px rgba(91, 33, 182, 0.10),
-    0 40px 80px rgba(245, 158, 11, 0.07);
-  --card-glow-border: rgb(14 116 144 / 0.55);
+    0 4px 8px rgba(15, 23, 42, 0.04),
+    0 12px 28px rgba(37, 99, 235, 0.08);
   --card-glow-shadow:
-    0 1px 2px rgba(15, 30, 50, 0.04),
-    0 10px 24px rgba(14, 116, 144, 0.22),
-    0 28px 64px rgba(14, 116, 144, 0.12),
-    0 48px 96px rgba(91, 33, 182, 0.07),
-    inset 0 0 0 1px rgb(14 116 144 / 0.2);
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 8px 24px rgba(37, 99, 235, 0.12),
+    0 20px 48px rgba(124, 58, 237, 0.06),
+    inset 0 0 0 1px rgb(37 99 235 / 0.14);
+
+  /* Section stripe */
+  --section-alt-bg: rgb(241 245 249);  /* slate-100 */
+  --section-alt-border: rgb(226 232 240);
 }
 
+/* ════════════════════════════════════════════════════════════
+   GLOBAL
+   ════════════════════════════════════════════════════════════ */
 html, body {
   background: rgb(var(--bg));
   color: rgb(var(--ink));
@@ -91,9 +138,9 @@ body {
 
 @layer components {
   .card {
-    @apply relative rounded-2xl border backdrop-blur-md;
-    background: var(--card-bg);
-    border-color: var(--card-border);
+    @apply relative rounded-[14px] border backdrop-blur-md;
+    background: rgb(var(--bg-card) / 0.72);
+    border-color: rgb(var(--bg-border));
     box-shadow: var(--card-shadow);
     transition: background-color 0.3s ease, border-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
   }
@@ -101,7 +148,7 @@ body {
     box-shadow: var(--card-hover-shadow);
   }
   .card-glow {
-    border-color: var(--card-glow-border);
+    border-color: rgb(var(--neon-cyan) / 0.5);
     box-shadow: var(--card-glow-shadow);
   }
   .neon-text {
@@ -124,13 +171,13 @@ body {
   }
   .chip-active {
     border-color: rgb(var(--neon-cyan) / 0.65);
-    background: rgb(var(--neon-cyan) / 0.12);
+    background: rgb(var(--neon-cyan) / 0.1);
     color: rgb(var(--neon-cyan));
-    box-shadow: 0 0 12px rgb(var(--neon-cyan) / 0.28);
+    box-shadow: 0 0 12px rgb(var(--neon-cyan) / 0.22);
   }
   .section-title {
-    @apply text-xs font-mono uppercase tracking-[0.25em];
-    color: rgb(var(--neon-cyan) / 0.85);
+    @apply text-[11px] font-mono uppercase tracking-[0.25em];
+    color: rgb(var(--neon-cyan) / 0.9);
   }
   .nav-item {
     @apply relative flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium;
@@ -145,8 +192,18 @@ body {
     color: rgb(var(--neon-cyan));
     background: rgb(var(--neon-cyan) / 0.1);
   }
+
+  /* Alternating section background — only paints in light mode */
+  .section-stripe {
+    background: var(--section-alt-bg);
+    border-top: 1px solid var(--section-alt-border);
+    border-bottom: 1px solid var(--section-alt-border);
+  }
 }
 
+/* ════════════════════════════════════════════════════════════
+   ANIMATIONS
+   ════════════════════════════════════════════════════════════ */
 @keyframes orion-twinkle {
   0%, 100% { opacity: 0.4; transform: scale(1); }
   50% { opacity: 1; transform: scale(1.08); }
@@ -155,23 +212,6 @@ body {
   0%, 100% { box-shadow: 0 0 20px rgb(var(--neon-cyan) / 0.32), 0 0 40px rgb(var(--neon-cyan) / 0.12); }
   50% { box-shadow: 0 0 30px rgb(var(--neon-cyan) / 0.6), 0 0 60px rgb(var(--neon-cyan) / 0.25); }
 }
-@keyframes orion-cloud-drift {
-  from { transform: translate3d(-35vw, 0, 0); }
-  to   { transform: translate3d(115vw, 0, 0); }
-}
-@keyframes orion-cloud-drift-rev {
-  from { transform: translate3d(115vw, 0, 0); }
-  to   { transform: translate3d(-35vw, 0, 0); }
-}
-@keyframes orion-sun-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-@keyframes orion-float-y {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-6px); }
-}
-
 .animate-twinkle { animation: orion-twinkle 3s ease-in-out infinite; }
 .animate-pulse-glow { animation: orion-pulse-glow 2.5s ease-in-out infinite; }
 
@@ -186,7 +226,9 @@ body {
   transition: box-shadow 0.3s ease, transform 0.3s ease, border-color 0.3s ease;
 }
 
-/* Light-theme refinements layered on top of generic .card */
+/* ════════════════════════════════════════════════════════════
+   LIGHT-THEME-SPECIFIC POLISH
+   ════════════════════════════════════════════════════════════ */
 [data-theme="light"] .card {
   background-color: rgb(255 255 255);
   backdrop-filter: none;
@@ -198,32 +240,13 @@ body {
 [data-theme="light"] .neon-text {
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
 }
-
-/* Strip ALL resting shadows in light mode — they only appear on hover */
-[data-theme="light"] .card,
-[data-theme="light"] .card-glow,
-[data-theme="light"] .chip,
-[data-theme="light"] .chip-active,
-[data-theme="light"] .card *[class*="shadow"] {
-  box-shadow: none !important;
-}
-[data-theme="light"] .card:hover {
-  box-shadow: var(--card-hover-shadow) !important;
-}
-[data-theme="light"] .card-glow:hover {
-  box-shadow:
-    0 2px 6px rgba(15, 30, 50, 0.05),
-    0 12px 28px rgba(14, 116, 144, 0.18),
-    0 30px 64px rgba(14, 116, 144, 0.12),
-    0 48px 96px rgba(91, 33, 182, 0.07) !important;
-}
-[data-theme="light"] .chip-active {
-  background: rgb(var(--neon-cyan) / 0.16);
-}
 [data-theme="light"] .animate-pulse-glow {
   animation: none;
 }
 
+/* ════════════════════════════════════════════════════════════
+   ACCESSIBILITY
+   ════════════════════════════════════════════════════════════ */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -239,3 +262,176 @@ section[id] { scroll-margin-top: 96px; }
 ::-webkit-scrollbar-track { background: rgb(var(--bg)); }
 ::-webkit-scrollbar-thumb { background: rgb(var(--bg-border)); border-radius: 5px; }
 ::-webkit-scrollbar-thumb:hover { background: rgb(var(--bg-border) / 1.6); }
+
+/* ════════════════════════════════════════════════════════════
+   ASTRO ARCHIVE — layout, ticker, slider, animations
+   ════════════════════════════════════════════════════════════ */
+
+/* Grid: sidebar + feed — align-items:start is required for position:sticky to work */
+.astro-grid {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 28px;
+  align-items: start;
+}
+/* Entries anchor point must clear navbar(68) + ticker(36) + scrubber(90) */
+[id^="dec-"] {
+  scroll-margin-top: 210px;
+}
+
+/* Light-mode: give the timeline spine enough contrast */
+[data-theme="light"] .astro-grid .astro-entry > div:first-child > div[style*="translateX(-50%)"] {
+  opacity: 1 !important;
+}
+
+/* Light-mode card: deeper resting shadow for depth */
+[data-theme="light"] .astro-entry > div:last-child {
+  box-shadow: 0 1px 3px rgba(15,23,42,.06), 0 1px 2px rgba(15,23,42,.04) !important;
+}
+@media (max-width: 1080px) {
+  .astro-grid {
+    grid-template-columns: 1fr;
+  }
+  .astro-sidebar {
+    position: static !important;
+    max-height: none !important;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+  }
+}
+
+/* Mega search box: 3-field row on desktop, stacked on mobile */
+.astro-qbox {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr auto;
+  align-items: stretch;
+  transition: transform .18s, box-shadow .18s;
+}
+/* Focus-within: lift the box 2px and deepen shadow per design spec */
+.astro-qbox:focus-within {
+  transform: translate(-2px, -2px);
+  box-shadow: 8px 8px 0 0 rgb(var(--neon-cyan)) !important;
+}
+[data-theme="light"] .astro-qbox:focus-within {
+  box-shadow: 8px 8px 0 0 rgb(var(--ink)) !important;
+}
+.astro-qsep {
+  display: block;
+  align-self: stretch;
+  width: 1px;
+}
+@media (max-width: 720px) {
+  .astro-qbox {
+    grid-template-columns: 1fr;
+  }
+  .astro-qsep {
+    width: auto;
+    height: 1px;
+    align-self: auto;
+  }
+  .astro-qbox button {
+    width: 100%;
+    border-radius: 12px !important;
+    padding: 14px !important;
+    justify-content: center;
+    margin: 4px 4px 4px !important;
+  }
+}
+
+/* Ticker */
+@keyframes astro-ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.astro-ticker-track {
+  display: inline-flex;
+  gap: 0;
+  white-space: nowrap;
+  animation: astro-ticker 60s linear infinite;
+}
+.astro-ticker-track:hover {
+  animation-play-state: paused;
+}
+
+/* Milestone node pulse */
+@keyframes astro-node-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgb(var(--neon-amber) / .33), 0 0 14px rgb(var(--neon-amber)); }
+  50%       { box-shadow: 0 0 0 8px rgb(var(--neon-amber) / .15), 0 0 28px rgb(var(--neon-amber) / .8); }
+}
+.astro-milestone-node {
+  animation: astro-node-pulse 2.4s ease-in-out infinite;
+}
+
+/* Dot pulse (live indicator) */
+@keyframes astro-dot-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: .35; }
+}
+.astro-dot-pulse {
+  animation: astro-dot-pulse 1.8s ease-in-out infinite;
+}
+
+/* Stats row */
+.astro-stats > div:last-child {
+  border-right: none !important;
+}
+
+/* Dual-handle range slider — hide default track, style only thumbs */
+.astro-range {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  pointer-events: none;
+  outline: none;
+}
+.astro-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgb(var(--neon-cyan));
+  border: 2.5px solid rgb(var(--bg-card));
+  box-shadow: 0 2px 8px rgba(0,0,0,.5);
+  cursor: grab;
+  pointer-events: auto;
+  transition: transform .15s;
+}
+.astro-range::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.18);
+}
+.astro-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgb(var(--neon-cyan));
+  border: 2.5px solid rgb(var(--bg-card));
+  box-shadow: 0 2px 8px rgba(0,0,0,.5);
+  cursor: grab;
+  pointer-events: auto;
+}
+.astro-range::-moz-range-track {
+  background: transparent;
+}
+
+/* Entry hover */
+.astro-entry + .astro-entry {
+  margin-top: 0;
+}
+
+/* Sidebar custom scrollbar */
+.astro-sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+.astro-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.astro-sidebar::-webkit-scrollbar-thumb {
+  background: rgb(var(--bg-border));
+  border-radius: 8px;
+}
+.astro-sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--bg-border2));
+}

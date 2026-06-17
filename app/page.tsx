@@ -2,22 +2,12 @@ import { fetchDigest } from "@/lib/sheets";
 import Starfield from "@/components/Starfield";
 import DaytimeSky from "@/components/DaytimeSky";
 import Navbar from "@/components/Navbar";
-import Hero from "@/components/Hero";
-import GujaratSky from "@/components/GujaratSky";
-import ApodCard from "@/components/ApodCard";
-import AsteroidCard from "@/components/AsteroidCard";
-import IssCard from "@/components/IssCard";
-import NewsGrid from "@/components/NewsGrid";
+import HeroSection from "@/components/HeroSection";
+import TopStories from "@/components/TopStories";
+import LatestNews from "@/components/LatestNews";
 import Footer from "@/components/Footer";
 
 export const revalidate = 300;
-
-function inferIssCount(text: string): number {
-  const m =
-    text.match(/(\d+)\s+humans?\s+are\s+in\s+space/i) ||
-    text.match(/ISS crew\s*\((\d+)\)/i);
-  return m ? parseInt(m[1], 10) : 0;
-}
 
 export default async function Home() {
   let data;
@@ -29,8 +19,8 @@ export default async function Home() {
         <div className="card p-8 max-w-md text-center">
           <h1 className="font-display text-2xl mb-3">Sky is cloudy ☁️</h1>
           <p className="text-ink-muted text-sm">
-            Couldn&apos;t load the digest from Google Sheets. Make sure the sheet is shared
-            as &ldquo;Anyone with the link can view.&rdquo;
+            Couldn&apos;t load the digest from Google Sheets. Make sure the sheet is shared as
+            &ldquo;Anyone with the link can view.&rdquo;
           </p>
           <p className="text-xs text-ink-dim mt-4 font-mono">
             {e instanceof Error ? e.message : "Unknown error"}
@@ -40,38 +30,35 @@ export default async function Home() {
     );
   }
 
-  const issCount = data.iss
-    ? inferIssCount(data.iss.aiSummary + " " + data.iss.title)
-    : 0;
-
   return (
     <main className="relative min-h-screen overflow-hidden">
       <Starfield />
       <DaytimeSky />
       <Navbar />
 
+      {/* 1 — Hero (50/50): headline + APOD / Sky Tonight */}
       <section id="top">
-        <Hero issCount={issCount} />
+        <HeroSection
+          storyCount={data.pulse.storyCount}
+          lastUpdated={data.lastUpdated}
+          pulse={data.pulse}
+          moon={data.moon}
+          observationQuality={data.observationQuality}
+          visiblePlanets={data.visiblePlanets}
+          viewingTime={data.viewingTime}
+          issCrewCount={data.issCrewCount}
+          apod={data.apod}
+        />
       </section>
 
-      <section id="sky">
-        <GujaratSky items={data.localSky} />
+      {/* 2 — Top Stories (featured banner + 4 tiles) */}
+      <section id="stories" className="section-stripe">
+        <TopStories stories={data.topStories} />
       </section>
 
-      <section id="apod">
-        <ApodCard apod={data.apod} />
-      </section>
-
-      <section id="asteroids">
-        <AsteroidCard asteroids={data.asteroids} />
-      </section>
-
-      <section id="iss">
-        <IssCard iss={data.iss} />
-      </section>
-
-      <section id="feed">
-        <NewsGrid articles={data.all} />
+      {/* 3 — Latest News feed */}
+      <section id="feed" className="section-stripe py-10 md:py-14">
+        <LatestNews articles={data.all} />
       </section>
 
       <Footer lastUpdated={data.lastUpdated} count={data.all.length} />

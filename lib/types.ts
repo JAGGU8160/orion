@@ -1,3 +1,10 @@
+import type {
+  MoonPhase,
+  SpacePulse,
+  TrendingTopic,
+  AsteroidInsight
+} from "./insights";
+
 export type Category =
   | "LocalSky"
   | "Launch"
@@ -19,6 +26,8 @@ export interface Article {
   url: string;
   imageUrl: string;
   publishedAt: string;
+  excitementScore?: number;
+  readingTime?: number;
 }
 
 export interface DigestBuckets {
@@ -27,6 +36,18 @@ export interface DigestBuckets {
   apod: Article | null;
   asteroids: Article[];
   iss: Article | null;
-  news: Article[];
+  launches: Article[];
+  generalNews: Article[];
+  topStories: Article[];
   lastUpdated: string;
+
+  // Derived insights
+  pulse: SpacePulse;
+  moon: MoonPhase;
+  observationQuality: { score: number; reason: string };
+  visiblePlanets: { name: string; altitude: number }[];
+  viewingTime: string | null;
+  issCrewCount: number;
+  trending: TrendingTopic[];
+  asteroidInsights: AsteroidInsight[];
 }

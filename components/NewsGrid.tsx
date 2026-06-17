@@ -39,8 +39,28 @@ export default function NewsGrid({ articles }: { articles: Article[] }) {
       const ev = e as CustomEvent<string>;
       setQuery(ev.detail || "");
     };
+    const onCategory = (e: Event) => {
+      const ev = e as CustomEvent<string | null>;
+      const c = ev.detail;
+      if (!c) {
+        setActive("All");
+      } else if (
+        c === "Launch" ||
+        c === "APOD" ||
+        c === "Asteroid" ||
+        c === "ISS" ||
+        c === "LocalSky" ||
+        c === "General"
+      ) {
+        setActive(c as Category);
+      }
+    };
     window.addEventListener("orion:search", onSearch);
-    return () => window.removeEventListener("orion:search", onSearch);
+    window.addEventListener("orion:category", onCategory);
+    return () => {
+      window.removeEventListener("orion:search", onSearch);
+      window.removeEventListener("orion:category", onCategory);
+    };
   }, []);
 
   const available = useMemo(() => {
@@ -94,7 +114,12 @@ export default function NewsGrid({ articles }: { articles: Article[] }) {
           {available.map((f) => (
             <button
               key={f.key}
-              onClick={() => setActive(f.key)}
+              onClick={() => {
+                setActive(f.key);
+                window.dispatchEvent(
+                  new CustomEvent("orion:category", { detail: f.key === "All" ? null : f.key })
+                );
+              }}
               className={`chip ${active === f.key ? "chip-active" : "hover:border-neon-cyan/40 hover:text-ink"}`}
             >
               <span aria-hidden>{f.emoji}</span>
