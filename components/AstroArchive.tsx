@@ -343,8 +343,8 @@ export default function AstroArchive() {
       {/* Archive grid */}
       <div ref={archiveRef} id="an-grid" className="astro-grid" style={{ maxWidth: 1480, margin: "40px auto 0", padding: "0 22px 120px" }}>
 
-        {/* Sidebar — sticky top:92 (design spec) */}
-        <aside className="astro-sidebar" style={{ position: "sticky", top: 92, alignSelf: "start", display: "flex", flexDirection: "column", gap: 14, maxHeight: "calc(100vh - 110px)", overflowY: "auto", paddingRight: 4 }}>
+        {/* Sidebar — sticky top:92, fills full remaining viewport height */}
+        <aside className="astro-sidebar" style={{ position: "sticky", top: 92, alignSelf: "start", display: "flex", flexDirection: "column", gap: 14, overflowY: "auto", paddingRight: 4 }}>
           <div style={panel}>
             <div style={{ display: "flex", alignItems: "center", gap: 9, background: S.surface2, border: `1px solid ${S.border}`, borderRadius: 10, padding: "10px 12px" }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke={S.dim} strokeWidth="2"/><path d="M21 21l-4-4" stroke={S.dim} strokeWidth="2" strokeLinecap="round"/></svg>

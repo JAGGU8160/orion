@@ -26,6 +26,7 @@ export interface Article {
   url: string;
   imageUrl: string;
   publishedAt: string;
+  date?: string;
   excitementScore?: number;
   readingTime?: number;
 }

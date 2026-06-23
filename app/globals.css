@@ -294,6 +294,7 @@ section[id] { scroll-margin-top: 96px; }
   }
   .astro-sidebar {
     position: static !important;
+    height: auto !important;
     max-height: none !important;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -419,6 +420,11 @@ section[id] { scroll-margin-top: 96px; }
 /* Entry hover */
 .astro-entry + .astro-entry {
   margin-top: 0;
+}
+
+/* Sidebar full viewport height */
+.astro-sidebar {
+  height: calc(100vh - 92px);
 }
 
 /* Sidebar custom scrollbar */
