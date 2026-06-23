@@ -90,11 +90,8 @@ export default function ArchiveNav() {
         <div className="an-right">
           <ThemeToggle />
           <button onClick={handleSurprise} className="an-surprise">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
-                stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
             <span className="an-surprise-text">Random discovery</span>
+            <span className="arrow">→</span>
           </button>
         </div>
       </nav>

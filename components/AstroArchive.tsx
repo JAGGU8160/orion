@@ -1,27 +1,24 @@
-"use client";
+﻿"use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   ASTRO_NEWS, ASTRO_CATEGORIES, ASTRO_ERAS,
   type AstroEntry, type AstroCategoryKey,
 } from "@/lib/astro-data";
 
-// ── constants ────────────────────────────────────────────────────
 const Y_MIN = 1801, Y_MAX = 2026, PAGE = 36;
 const MILESTONES = ASTRO_NEWS.filter(e => e.milestone);
 const ALL_SOURCES = [...new Set(ASTRO_NEWS.map(e => e.source))].sort();
 const DECADES = Array.from({ length: 23 }, (_, i) => 1800 + i * 10);
 const QUICK_CHIPS = ["Black holes","Voyager","Mars","Exoplanet","Comet","Eclipse","Hubble","LIGO"];
+const SORTED_ENTRIES = [...ASTRO_NEWS].sort((a, b) => a.year - b.year);
 
-// ── helpers ──────────────────────────────────────────────────────
 const catInfo = (k: AstroCategoryKey) => ASTRO_CATEGORIES[k];
 const hue     = (k: AstroCategoryKey) => catInfo(k).hue;
 const cc      = (h: number, l = 60, a = 1) => `hsl(${h} 70% ${l}% / ${a})`;
 const eraOf   = (y: number) => ASTRO_ERAS.find(e => y >= e.from && y <= e.to)?.label ?? "";
 const decOf   = (y: number) => Math.floor(y / 10) * 10;
 
-// ── colour tokens ────────────────────────────────────────────────
 const S = {
   surface : "rgb(var(--bg-card))",
   surfaceA: "rgb(var(--bg-card) / 0.88)",
@@ -38,14 +35,10 @@ const S = {
 } as const;
 
 const panel: React.CSSProperties = {
-  background: S.surfaceA, border: `1px solid ${S.border}`,
+  background: "rgb(var(--bg-card) / 0.88)", border: "1px solid rgb(var(--bg-border))",
   borderRadius: 14, padding: 16, backdropFilter: "blur(8px)",
 };
 
-// ── chip colour helpers (theme-aware, passed as props) ────────────
-type ChipFn = (h: number) => string;
-
-// ── state ────────────────────────────────────────────────────────
 interface Filters {
   text: string; heroEra: string; heroCat: string;
   cats: Set<AstroCategoryKey>; yMin: number; yMax: number;
@@ -58,23 +51,27 @@ const INIT: Filters = {
   source: "", milestoneOnly: false, imageOnly: false, sort: "asc",
 };
 
-// ════════════════════════════════════════════════════════════════
 export default function AstroArchive() {
   const [f, setF]               = useState<Filters>(INIT);
   const [shown, setShown]       = useState(PAGE);
   const [detail, setDetail]     = useState<number | null>(null);
+  const [detailEntry, setDetailEntry] = useState<{ entry: AstroEntry; idx: number } | null>(null);
   const [showTop, setShowTop]   = useState(false);
   const [statVis, setStatVis]   = useState(false);
   const [activeDec, setActiveDec] = useState<number>(1800);
   const [progPct, setProgPct]   = useState(0);
   const [isDark, setIsDark]     = useState(true);
+  const [queuedDetail, setQueuedDetail] = useState<number | null>(null);
 
   const sentinelRef = useRef<HTMLDivElement>(null);
   const statsRef    = useRef<HTMLDivElement>(null);
   const feedRef     = useRef<HTMLDivElement>(null);
   const archiveRef  = useRef<HTMLDivElement>(null);
+  const scrimRef    = useRef<HTMLDivElement>(null);
+  const detailRef   = useRef<HTMLElement>(null);
+  const totopRef    = useRef<HTMLButtonElement>(null);
 
-  // ── theme detection ──────────────────────────────────────────
+  // Theme detection
   useEffect(() => {
     const check = () => setIsDark(document.documentElement.dataset.theme !== "light");
     check();
@@ -83,15 +80,6 @@ export default function AstroArchive() {
     return () => obs.disconnect();
   }, []);
 
-  // ── chip colours (dark: 75% lightness, light: 35% — per spec) ─
-  const chipColor = (h: number) => isDark ? cc(h, 72) : cc(h, 35);
-  const chipBg    = (h: number) => cc(h, 50, 0.14);
-  const chipBord  = (h: number) => isDark ? cc(h, 55, 0.3) : cc(h, 45, 0.35);
-
-  // ── hard shadow: accent in dark, ink (fg) in light — per spec ─
-  const hardShadow = isDark ? `6px 6px 0 0 ${S.accent}` : `6px 6px 0 0 ${S.ink}`;
-
-  // ── filter ──────────────────────────────────────────────────
   const filtered = useMemo(() => {
     let r = ASTRO_NEWS;
     if (f.text.trim()) {
@@ -123,10 +111,9 @@ export default function AstroArchive() {
     return m;
   }, []);
 
-  const maxDC = Math.max(...Object.values(decadeCounts), 1);
-
+  const maxDC  = Math.max(...Object.values(decadeCounts), 1);
   const visible = filtered.slice(0, shown);
-  const groups = useMemo(() => {
+  const groups  = useMemo(() => {
     const gs: { decade: number; entries: AstroEntry[] }[] = [];
     let cur = -1;
     for (const e of visible) {
@@ -137,7 +124,7 @@ export default function AstroArchive() {
     return gs;
   }, [visible]);
 
-  // ── infinite scroll ──────────────────────────────────────────
+  // Infinite scroll
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
@@ -151,7 +138,20 @@ export default function AstroArchive() {
 
   useEffect(() => { setShown(PAGE); }, [f]);
 
-  // ── scroll handler: back-to-top + active decade + progress ───
+  // Entry reveal via CSS .show class (spec: rootMargin -8%)
+  useEffect(() => {
+    const container = feedRef.current;
+    if (!container) return;
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(en => {
+        if (en.isIntersecting) { en.target.classList.add("show"); io.unobserve(en.target); }
+      });
+    }, { rootMargin: "0px 0px -8% 0px" });
+    container.querySelectorAll(".a-entry").forEach(el => io.observe(el));
+    return () => io.disconnect();
+  }, [visible]);
+
+  // Scroll tracking: back-to-top + active decade + progress
   useEffect(() => {
     const h = () => {
       setShowTop(window.scrollY > 700);
@@ -161,7 +161,7 @@ export default function AstroArchive() {
       }
       const feed = feedRef.current;
       if (feed) {
-        const rect = feed.getBoundingClientRect();
+        const rect  = feed.getBoundingClientRect();
         const total = feed.offsetHeight - window.innerHeight;
         setProgPct(Math.min(100, Math.max(0, (-rect.top / Math.max(1, total)) * 100)));
       }
@@ -170,7 +170,7 @@ export default function AstroArchive() {
     return () => window.removeEventListener("scroll", h);
   }, []);
 
-  // ── stats count-up observer ──────────────────────────────────
+  // Stats count-up
   useEffect(() => {
     const el = statsRef.current;
     if (!el) return;
@@ -179,7 +179,23 @@ export default function AstroArchive() {
     return () => obs.disconnect();
   }, []);
 
-  // ── detail: keyboard + body lock ────────────────────────────
+  // Detail panel open/close via CSS class (transition: .36s cubic-bezier(.4,1,.3,1))
+  useEffect(() => {
+    if (detail !== null && filtered[detail]) {
+      setDetailEntry({ entry: filtered[detail], idx: detail });
+      scrimRef.current?.classList.add("open");
+      detailRef.current?.classList.add("open");
+      document.body.style.overflow = "hidden";
+    } else {
+      scrimRef.current?.classList.remove("open");
+      detailRef.current?.classList.remove("open");
+      document.body.style.overflow = "";
+      const t = setTimeout(() => setDetailEntry(null), 400);
+      return () => clearTimeout(t);
+    }
+  }, [detail, filtered]);
+
+  // Keyboard navigation
   useEffect(() => {
     if (detail === null) return;
     const h = (e: KeyboardEvent) => {
@@ -188,16 +204,36 @@ export default function AstroArchive() {
       if (e.key === "ArrowLeft"  && detail > 0)                   setDetail(d => d! - 1);
     };
     document.addEventListener("keydown", h);
-    document.body.style.overflow = "hidden";
-    return () => { document.removeEventListener("keydown", h); document.body.style.overflow = ""; };
+    return () => document.removeEventListener("keydown", h);
   }, [detail, filtered.length]);
 
-  // ── state helpers ────────────────────────────────────────────
-  const upd = <K extends keyof Filters>(k: K, v: Filters[K]) => setF(s => ({ ...s, [k]: v }));
+  // Back-to-top CSS class
+  useEffect(() => { totopRef.current?.classList.toggle("show", showTop); }, [showTop]);
 
+  // Random discovery event from ArchiveNav
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const entryId = (e as CustomEvent<{ entryId: string }>).detail?.entryId;
+      if (!entryId) return;
+      setF(INIT);
+      const idx = SORTED_ENTRIES.findIndex(en => en.id === entryId);
+      if (idx >= 0) { setShown(Math.max(PAGE, idx + 1)); setQueuedDetail(idx); }
+    };
+    window.addEventListener("orion:archive:surprise", handler);
+    return () => window.removeEventListener("orion:archive:surprise", handler);
+  }, []);
+
+  // Apply queued detail after filters reset
+  useEffect(() => {
+    if (queuedDetail !== null && queuedDetail < filtered.length) {
+      setDetail(queuedDetail);
+      setQueuedDetail(null);
+    }
+  }, [filtered, queuedDetail]);
+
+  const upd       = <K extends keyof Filters>(k: K, v: Filters[K]) => setF(s => ({ ...s, [k]: v }));
   const toggleCat = (k: AstroCategoryKey) =>
     setF(s => { const c = new Set(s.cats); c.has(k) ? c.delete(k) : c.add(k); return { ...s, cats: c }; });
-
   const applyHero = () =>
     setF(s => {
       const next = { ...s };
@@ -205,64 +241,42 @@ export default function AstroArchive() {
       if (s.heroCat) next.cats = new Set([s.heroCat as AstroCategoryKey]);
       return next;
     });
-
   const clearAll = () => { setF(INIT); setShown(PAGE); };
-
-  // sort + scroll to archive top (per design spec)
-  const setSort = (s: "asc" | "desc") => {
+  // Sort + scroll to archive top (spec: offsetTop - 80)
+  const setSort  = (s: "asc" | "desc") => {
     upd("sort", s);
-    setTimeout(() => archiveRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    setTimeout(() => {
+      const el = archiveRef.current;
+      if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 80, behavior: "smooth" });
+    }, 50);
   };
 
-  const activeCount = [
-    f.text, f.cats.size > 0,
-    f.yMin !== Y_MIN || f.yMax !== Y_MAX,
-    f.source, f.milestoneOnly, f.imageOnly,
-  ].filter(Boolean).length;
+  const hardShadow  = isDark ? `6px 6px 0 0 ${S.accent}` : `6px 6px 0 0 ${S.ink}`;
+  const chipColor   = (h: number) => isDark ? cc(h, 72) : cc(h, 35);
+  const chipBg      = (h: number) => cc(h, 50, 0.14);
+  const chipBord    = (h: number) => isDark ? cc(h, 55, 0.3) : cc(h, 45, 0.35);
+  const activeCount = [f.text, f.cats.size > 0, f.yMin !== Y_MIN || f.yMax !== Y_MAX, f.source, f.milestoneOnly, f.imageOnly].filter(Boolean).length;
 
-  // ════════════════════════════════════════════════════════════
   return (
-    <div className="relative z-10">
+    <div className="relative z-10" id="an-hero">
 
-      {/* ── Ticker ─ sticky just below fixed navbar ──────────────── */}
-      <div style={{ position: "sticky", top: 68, zIndex: 40, borderBottom: `1px solid ${S.border}`, overflow: "hidden", background: `${S.surface}f2`, backdropFilter: "blur(12px)" }}>
-        <div style={{ maxWidth: 1480, margin: "0 auto", display: "flex", alignItems: "center", gap: 14, padding: "8px 22px", fontFamily: "monospace", fontSize: 11, color: S.dim, letterSpacing: ".04em" }}>
-          {/* teal dot — accent2 matches design's accent-2 (flow teal) */}
-          <span className="astro-dot-pulse" style={{ width: 6, height: 6, borderRadius: "50%", background: S.accent2, boxShadow: `0 0 0 3px rgb(var(--neon-violet) / .25)`, display: "inline-block", flexShrink: 0 }} />
-          <span style={{ color: S.muted, fontWeight: 500, flexShrink: 0, textTransform: "uppercase", letterSpacing: ".1em" }}>Live Sky</span>
-          <div style={{ flex: 1, overflow: "hidden", maskImage: "linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)" }}>
-            <div className="astro-ticker-track">
-              {[...MILESTONES.slice(0, 18), ...MILESTONES.slice(0, 18)].map((m, i) => (
-                <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 6, marginRight: 30 }}>
-                  <b style={{ color: S.ink }}>{m.year}</b>
-                  {m.title.split("—")[0].split(":")[0].trim()}
-                  <span style={{ color: S.accent2 }}>{catInfo(m.category).glyph}</span>
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Hero ────────────────────────────────────────────────── */}
-      <header style={{ maxWidth: 1080, margin: "56px auto 0", padding: "0 24px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
+      {/* Hero section */}
+      <header style={{ maxWidth: 1080, margin: "56px auto 0", padding: "0 28px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 9, fontFamily: "monospace", fontSize: 11, letterSpacing: ".16em", textTransform: "uppercase", color: S.muted, padding: "7px 14px", border: `1px solid ${S.border}`, borderRadius: 999, background: S.surfaceA, backdropFilter: "blur(8px)" }}>
           <span className="astro-dot-pulse" style={{ width: 6, height: 6, borderRadius: "50%", background: S.gold, display: "inline-block" }} />
           <b style={{ color: S.ink }}>500</b>&nbsp;moments · 1801 – 2026
         </span>
-
         <h1 style={{ fontSize: "clamp(36px,5.4vw,64px)", lineHeight: 1.02, letterSpacing: "-.04em", fontWeight: 700, margin: "20px 0 16px", maxWidth: "17ch", color: S.ink }}>
           Two centuries of looking{" "}
           <em style={{ fontStyle: "normal", background: `linear-gradient(96deg,${S.accent},#9b7bff 45%,${S.accent2})`, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>up</em>
           , in one scroll.
         </h1>
-
         <p style={{ fontSize: 16, color: S.muted, lineHeight: 1.55, maxWidth: "58ch", margin: "0 auto 28px" }}>
-          From the first asteroid found on New Year's night, 1801, to the deepest galaxies seen by Webb — search, filter and travel the timeline of how we came to know the cosmos.
+          From the first asteroid found on New Year&apos;s night, 1801, to the deepest galaxies seen by Webb — search, filter and travel the timeline of how we came to know the cosmos.
         </p>
 
-        {/* Mega search — astro-qbox class adds focus-within lift via CSS */}
-        <div className="astro-qbox" style={{ width: "100%", maxWidth: 860, background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 18, padding: 6, boxShadow: hardShadow }}>
+        {/* Mega search box */}
+        <div className="astro-qbox" style={{ width: "100%", maxWidth: 900, background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 18, padding: 6, boxShadow: hardShadow }}>
           <label style={{ textAlign: "left", padding: "11px 16px", display: "flex", flexDirection: "column", gap: 5, borderRadius: 12, cursor: "text" }}>
             <span style={{ fontFamily: "monospace", fontSize: 10, letterSpacing: ".14em", color: S.dim, textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6 }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke={S.accent} strokeWidth="2"/><path d="M21 21l-4-4" stroke={S.accent} strokeWidth="2" strokeLinecap="round"/></svg>
@@ -303,13 +317,13 @@ export default function AstroArchive() {
           </button>
         </div>
 
-        {/* Quick chips */}
+        {/* Quick search chips */}
         <div style={{ marginTop: 18, display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
           {QUICK_CHIPS.map(q => (
             <button key={q} onClick={() => upd("text", q)}
               style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "monospace", fontSize: 11, letterSpacing: ".06em", color: S.muted, padding: "7px 12px", border: `1px solid ${S.border}`, borderRadius: 999, background: S.surfaceA, cursor: "pointer", textTransform: "uppercase", transition: "all .15s" }}
-              onMouseEnter={e => { e.currentTarget.style.color = S.ink; e.currentTarget.style.background = S.surface; e.currentTarget.style.transform = "translateY(-1px)"; }}
-              onMouseLeave={e => { e.currentTarget.style.color = S.muted; e.currentTarget.style.background = S.surfaceA; e.currentTarget.style.transform = ""; }}>
+              onMouseEnter={e => { e.currentTarget.style.color = S.ink; e.currentTarget.style.transform = "translateY(-1px)"; }}
+              onMouseLeave={e => { e.currentTarget.style.color = S.muted; e.currentTarget.style.transform = ""; }}>
               <span style={{ color: S.accent2 }}>▶</span>{q}
             </button>
           ))}
@@ -322,19 +336,15 @@ export default function AstroArchive() {
             { n: MILESTONES.length, unit: "",   label: "Major milestones" },
             { n: 226,               unit: "yr", label: "Years covered"    },
             { n: 8,                 unit: "",   label: "Topics tracked"   },
-          ].map((s, i) => (
-            <CountStat key={i} n={s.n} unit={s.unit} label={s.label} visible={statVis} idx={i} />
-          ))}
+          ].map((s, i) => <CountStat key={i} n={s.n} unit={s.unit} label={s.label} visible={statVis} idx={i} />)}
         </div>
       </header>
 
-      {/* ── Archive grid ─────────────────────────────────────────── */}
-      <div ref={archiveRef} className="astro-grid" style={{ maxWidth: 1480, margin: "40px auto 0", padding: "0 22px 120px" }}>
+      {/* Archive grid */}
+      <div ref={archiveRef} id="an-grid" className="astro-grid" style={{ maxWidth: 1480, margin: "40px auto 0", padding: "0 22px 120px" }}>
 
-        {/* ── Sidebar ────────────────────────────────────────────── */}
-        <aside className="astro-sidebar" style={{ position: "sticky", top: 104, alignSelf: "start", display: "flex", flexDirection: "column", gap: 14, maxHeight: "calc(100vh - 116px)", overflowY: "auto", paddingRight: 4 }}>
-
-          {/* Search */}
+        {/* Sidebar — sticky top:92 (design spec) */}
+        <aside className="astro-sidebar" style={{ position: "sticky", top: 92, alignSelf: "start", display: "flex", flexDirection: "column", gap: 14, maxHeight: "calc(100vh - 110px)", overflowY: "auto", paddingRight: 4 }}>
           <div style={panel}>
             <div style={{ display: "flex", alignItems: "center", gap: 9, background: S.surface2, border: `1px solid ${S.border}`, borderRadius: 10, padding: "10px 12px" }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke={S.dim} strokeWidth="2"/><path d="M21 21l-4-4" stroke={S.dim} strokeWidth="2" strokeLinecap="round"/></svg>
@@ -344,7 +354,6 @@ export default function AstroArchive() {
             </div>
           </div>
 
-          {/* Era range */}
           <div style={panel}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <span style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: ".14em", textTransform: "uppercase", color: S.dim }}>Era Range</span>
@@ -368,7 +377,6 @@ export default function AstroArchive() {
             </div>
           </div>
 
-          {/* Categories */}
           <div style={panel}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 13 }}>
               <span style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: ".14em", textTransform: "uppercase", color: S.dim }}>Categories</span>
@@ -379,8 +387,7 @@ export default function AstroArchive() {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
               {(Object.entries(ASTRO_CATEGORIES) as [AstroCategoryKey, (typeof ASTRO_CATEGORIES)[AstroCategoryKey]][]).map(([k, v]) => {
-                const on = f.cats.has(k);
-                const h = v.hue;
+                const on = f.cats.has(k); const h = v.hue;
                 return (
                   <div key={k} onClick={() => toggleCat(k)}
                     style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 9px", borderRadius: 9, cursor: "pointer", fontSize: 13.5, color: on ? S.ink : S.muted, background: on ? cc(h, 50, 0.1) : "transparent", transition: "background .12s,color .12s" }}>
@@ -396,7 +403,6 @@ export default function AstroArchive() {
             </div>
           </div>
 
-          {/* Source */}
           <div style={panel}>
             <div style={{ marginBottom: 10 }}>
               <span style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: ".14em", textTransform: "uppercase", color: S.dim }}>Observatory / Source</span>
@@ -408,7 +414,6 @@ export default function AstroArchive() {
             </select>
           </div>
 
-          {/* Toggles */}
           <div style={panel}>
             {([
               { k: "milestoneOnly" as const, label: "Milestones only", icon: "★", desc: "The era-defining discoveries" },
@@ -419,9 +424,7 @@ export default function AstroArchive() {
                 <div key={t.k} onClick={() => upd(t.k, !on)}
                   style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 2px", cursor: "pointer", borderBottom: ti === 0 ? `1px solid ${S.border}` : "none", marginBottom: ti === 0 ? 4 : 0 }}>
                   <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13.5, color: S.ink }}>
-                      <span style={{ color: S.gold }}>{t.icon}</span>{t.label}
-                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13.5, color: S.ink }}><span style={{ color: S.gold }}>{t.icon}</span>{t.label}</div>
                     <div style={{ fontSize: 11.5, color: S.dim, marginTop: 1 }}>{t.desc}</div>
                   </div>
                   <div style={{ width: 38, height: 22, borderRadius: 99, background: on ? S.accent : S.surface2, border: `1px solid ${on ? S.accent : S.border2}`, position: "relative", flexShrink: 0, transition: "all .18s" }}>
@@ -433,11 +436,11 @@ export default function AstroArchive() {
           </div>
         </aside>
 
-        {/* ── Feed ──────────────────────────────────────────────── */}
+        {/* Feed column */}
         <div ref={feedRef} style={{ minWidth: 0 }}>
 
-          {/* Decade scrubber — sticky below ticker */}
-          <div style={{ position: "sticky", top: 104, zIndex: 30, marginBottom: 6, background: `${S.surface}cc`, border: `1px solid ${S.border}`, borderRadius: 14, padding: "12px 16px", backdropFilter: "blur(12px)", boxShadow: S.shadow }}>
+          {/* Scrubber — sticky top:92 (design spec) */}
+          <div style={{ position: "sticky", top: 92, zIndex: 30, marginBottom: 6, background: `${S.surface}cc`, border: `1px solid ${S.border}`, borderRadius: 14, padding: "12px 16px", backdropFilter: "blur(12px)", boxShadow: S.shadow }}>
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 14, marginBottom: 11, flexWrap: "wrap" }}>
               <div style={{ fontSize: 14, color: S.muted }}>
                 <b style={{ color: S.ink, fontWeight: 600 }}>{filtered.length.toLocaleString()}</b> moments · {filtered.filter(e => e.milestone).length} milestones
@@ -452,20 +455,20 @@ export default function AstroArchive() {
                 ))}
               </div>
             </div>
-            {/* Histogram ticks + progress line */}
             <div style={{ position: "relative", height: 36 }}>
-              {/* axis track */}
               <div style={{ position: "absolute", top: 22, left: 0, right: 0, height: 2, background: S.surface2, borderRadius: 2 }} />
-              {/* progress fill — gradient fills left to right as you scroll */}
               <div style={{ position: "absolute", top: 22, left: 0, width: `${progPct}%`, height: 2, background: `linear-gradient(90deg,${S.accent},${S.accent2})`, borderRadius: 2, transition: "width .15s", zIndex: 1 }} />
               {DECADES.map(d => {
-                const pct = ((d - 1800) / (2030 - 1800)) * 100;
-                const cnt = decadeCounts[d] || 0;
+                const pct  = ((d - 1800) / (2030 - 1800)) * 100;
+                const cnt  = decadeCounts[d] || 0;
                 const barH = cnt > 0 ? Math.round(6 + (cnt / maxDC) * 16) : 2;
                 const isAct = activeDec === d && cnt > 0;
                 return (
                   <div key={d} title={`${d}s: ${cnt}`}
-                    onClick={() => { const el = document.getElementById(`dec-${d}`); el?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
+                    onClick={() => {
+                      const head = document.getElementById(`dec-${d}`);
+                      if (head) window.scrollTo({ top: head.getBoundingClientRect().top + window.scrollY - 150, behavior: "smooth" });
+                    }}
                     style={{ position: "absolute", left: `${pct}%`, top: 0, transform: "translateX(-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, cursor: cnt > 0 ? "pointer" : "default", userSelect: "none" }}>
                     <div style={{ width: isAct ? 4 : 3, height: barH, background: isAct ? S.accent : cnt > 0 ? S.muted : S.border, borderRadius: 3, marginTop: 22 - barH, opacity: cnt > 0 ? (isAct ? 1 : 0.55) : 0.2, transition: "all .25s" }} />
                     <span style={{ fontFamily: "monospace", fontSize: 9, color: isAct ? S.accent : S.dim, fontWeight: isAct ? 700 : 400, transition: "all .25s" }}>{String(d).slice(2)}s</span>
@@ -475,7 +478,6 @@ export default function AstroArchive() {
             </div>
           </div>
 
-          {/* Active filter chips */}
           {activeCount > 0 && (
             <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 16 }}>
               {f.text && <FChip label={`"${f.text}"`} onX={() => upd("text", "")} />}
@@ -490,7 +492,6 @@ export default function AstroArchive() {
             </div>
           )}
 
-          {/* Empty state */}
           {filtered.length === 0 && (
             <div style={{ textAlign: "center", padding: "70px 20px", color: S.muted }}>
               <div style={{ fontSize: 48, marginBottom: 12 }}>🔭</div>
@@ -502,17 +503,15 @@ export default function AstroArchive() {
           {/* Timeline groups */}
           {groups.map(({ decade, entries }, gi) => (
             <div key={decade} id={`dec-${decade}`}>
-              {/* Decade header — first header gets tight top margin per design */}
               <div style={{ display: "flex", alignItems: "center", gap: 16, margin: `${gi === 0 ? "4px" : "30px"} 0 18px`, paddingLeft: 4 }}>
                 <span style={{ fontSize: 30, fontWeight: 700, letterSpacing: "-.03em", color: S.ink, fontVariantNumeric: "tabular-nums" }}>{decade}s</span>
                 <span style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: ".16em", textTransform: "uppercase", padding: "4px 10px", borderRadius: 999, border: `1px solid ${S.border2}`, color: S.muted, whiteSpace: "nowrap" }}>{eraOf(decade)}</span>
                 <div style={{ flex: 1, height: 1, background: `linear-gradient(90deg,${S.border2},transparent)` }} />
-                <span style={{ fontFamily: "monospace", fontSize: 11, color: S.dim }}>{entries.length}</span>
+                <span style={{ fontFamily: "monospace", fontSize: 11, color: S.dim }}>{decadeCounts[decade]} moments</span>
               </div>
               {entries.map((entry, i) => (
                 <EntryRow key={entry.id} entry={entry} isLast={i === entries.length - 1}
-                  chipColor={chipColor} chipBg={chipBg} chipBord={chipBord}
-                  onOpen={() => setDetail(filtered.indexOf(entry))} />
+                  isDark={isDark} onOpen={() => setDetail(filtered.indexOf(entry))} />
               ))}
             </div>
           ))}
@@ -527,50 +526,46 @@ export default function AstroArchive() {
         </div>
       </div>
 
-      {/* ── Detail panel ─────────────────────────────────────────── */}
-      <AnimatePresence>
-        {detail !== null && filtered[detail] && (
-          <>
-            <motion.div key="scrim"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setDetail(null)}
-              style={{ position: "fixed", inset: 0, background: "rgba(2,4,10,.65)", backdropFilter: "blur(3px)", zIndex: 80 }} />
-            <motion.aside key="panel"
-              initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
-              transition={{ type: "tween", duration: 0.36, ease: [0.4, 1, 0.3, 1] }}
-              style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "min(560px,94vw)", zIndex: 90, background: S.surface, borderLeft: `1px solid ${S.border2}`, boxShadow: "-30px 0 80px -30px rgba(0,0,0,.8)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-              <DetailPanel
-                entry={filtered[detail]} idx={detail} total={filtered.length} filtered={filtered}
-                onClose={() => setDetail(null)}
-                onPrev={() => setDetail(d => Math.max(0, d! - 1))}
-                onNext={() => setDetail(d => Math.min(filtered.length - 1, d! + 1))}
-                onCat={c => { setF(s => ({ ...s, cats: new Set([c]) })); setDetail(null); }}
-                chipColor={chipColor} chipBg={chipBg} chipBord={chipBord}
-              />
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
+      {/* Archive footer */}
+      <footer id="an-footer" style={{ maxWidth: 1480, margin: "0 auto", padding: "40px 22px 60px", borderTop: `1px solid ${S.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 14 }}>
+        <p style={{ margin: 0, fontFamily: "monospace", fontSize: 12, color: S.dim }}>
+          500 moments spanning 1801–2026, curated from astronomical records.
+        </p>
+        <a href="/" style={{ fontFamily: "monospace", fontSize: 12, color: S.accent, textDecoration: "none", letterSpacing: ".06em" }}>
+          ← Back to Orion Space Digest
+        </a>
+      </footer>
 
-      {/* ── Back to top ──────────────────────────────────────────── */}
-      <AnimatePresence>
-        {showTop && (
-          <motion.button key="top"
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }}
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            style={{ position: "fixed", bottom: 24, right: 24, zIndex: 50, width: 46, height: 46, borderRadius: "50%", background: S.accent, color: "#fff", border: "none", cursor: "pointer", display: "grid", placeItems: "center", boxShadow: `0 10px 30px -10px ${S.accent}` }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M6 11l6-6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          </motion.button>
+      {/* Detail scrim — always in DOM, animated via CSS .open class */}
+      <div ref={scrimRef} className="a-scrim" onClick={() => setDetail(null)} />
+
+      {/* Detail panel — always in DOM, animated via CSS .open class */}
+      <aside ref={detailRef} className="a-detail"
+        style={{ background: S.surface, borderLeft: `1px solid ${S.border2}`, boxShadow: "-30px 0 80px -30px rgba(0,0,0,.8)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        {detailEntry && (
+          <DetailPanel
+            entry={detailEntry.entry} idx={detailEntry.idx} total={filtered.length} filtered={filtered}
+            onClose={() => setDetail(null)}
+            onPrev={() => setDetail(d => Math.max(0, d! - 1))}
+            onNext={() => setDetail(d => Math.min(filtered.length - 1, d! + 1))}
+            onCat={c => { setF(s => ({ ...s, cats: new Set([c]) })); setDetail(null); }}
+            isDark={isDark}
+          />
         )}
-      </AnimatePresence>
+      </aside>
+
+      {/* Back-to-top — always in DOM, animated via CSS .show class */}
+      <button ref={totopRef} className="a-totop"
+        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        style={{ position: "fixed", bottom: 24, right: 24, zIndex: 50, width: 46, height: 46, borderRadius: "50%", background: S.accent, color: "#fff", border: "none", cursor: "pointer", display: "grid", placeItems: "center", boxShadow: `0 10px 30px -10px ${S.accent}` }}
+        aria-label="Back to top">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M6 11l6-6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      </button>
     </div>
   );
 }
 
-// ════════════════════════════════════════════════════════════════
-//  Sub-components
-// ════════════════════════════════════════════════════════════════
-
+// ── CountStat ─────────────────────────────────────────────────────
 function CountStat({ n, unit, label, visible, idx }: { n: number; unit: string; label: string; visible: boolean; idx: number }) {
   const [v, setV] = useState(0);
   useEffect(() => {
@@ -594,10 +589,11 @@ function CountStat({ n, unit, label, visible, idx }: { n: number; unit: string; 
   );
 }
 
+// ── DualRange ─────────────────────────────────────────────────────
 function DualRange({ yMin, yMax, onChange }: { yMin: number; yMax: number; onChange: (lo: number, hi: number) => void }) {
   const span = Y_MAX - Y_MIN;
-  const pLo = ((yMin - Y_MIN) / span) * 100;
-  const pHi = ((yMax - Y_MIN) / span) * 100;
+  const pLo  = ((yMin - Y_MIN) / span) * 100;
+  const pHi  = ((yMax - Y_MIN) / span) * 100;
   return (
     <div style={{ position: "relative", height: 30 }}>
       <div style={{ position: "absolute", top: 13, left: 0, right: 0, height: 4, background: S.surface2, borderRadius: 4 }} />
@@ -612,6 +608,7 @@ function DualRange({ yMin, yMax, onChange }: { yMin: number; yMax: number; onCha
   );
 }
 
+// ── FChip ─────────────────────────────────────────────────────────
 function FChip({ label, onX }: { label: string; onX: () => void }) {
   return (
     <div style={{ display: "inline-flex", alignItems: "center", gap: 7, fontFamily: "monospace", fontSize: 11, letterSpacing: ".04em", padding: "5px 10px", borderRadius: 999, background: S.surface2, border: `1px solid ${S.border}`, color: S.muted }}>
@@ -621,74 +618,65 @@ function FChip({ label, onX }: { label: string; onX: () => void }) {
   );
 }
 
-// ── EntryRow ──────────────────────────────────────────────────────
-function EntryRow({ entry, isLast, chipColor, chipBg, chipBord, onOpen }: {
-  entry: AstroEntry; isLast: boolean;
-  chipColor: ChipFn; chipBg: ChipFn; chipBord: ChipFn;
-  onOpen: () => void;
+// ── EntryRow — no Framer Motion, CSS .show class for reveal ──────
+function EntryRow({ entry, isLast, isDark, onOpen }: {
+  entry: AstroEntry; isLast: boolean; isDark: boolean; onOpen: () => void;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-40px" }} transition={{ duration: 0.5 }}
-      className="astro-entry"
-      style={{ display: "grid", gridTemplateColumns: "96px 1fr", position: "relative" }}>
+    <div className="a-entry" style={{ '--cat': hue(entry.category) } as React.CSSProperties}>
       {/* Rail */}
       <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 4 }}>
-        {/* Spine behind everything */}
         {!isLast && (
           <div style={{ position: "absolute", top: 0, bottom: -22, left: "50%", width: 2, background: `linear-gradient(180deg,${S.border2} 0%,${S.border2} 85%,transparent 100%)`, transform: "translateX(-50%)", zIndex: 0 }} />
         )}
-        {/* Date first (small), year below (bold large) — matches design order */}
         <div style={{ fontFamily: "monospace", fontSize: 11, color: S.dim, textAlign: "center", lineHeight: 1.3, position: "relative", zIndex: 1 }}>
-          {entry.date || " "}
+          {entry.date || " "}
           <b style={{ display: "block", color: S.ink, fontSize: 15, fontWeight: 600 }}>{entry.year}</b>
         </div>
-        {/* Node */}
-        <div
-          className={entry.milestone ? "astro-milestone-node" : undefined}
+        <div className={entry.milestone ? "astro-milestone-node" : undefined}
           style={{ width: 14, height: 14, borderRadius: "50%", marginTop: 9, position: "relative", zIndex: 1,
             background: entry.milestone ? S.gold : S.surface,
             border: `2px solid ${entry.milestone ? S.gold : S.border2}`,
             ...(entry.milestone ? { boxShadow: `0 0 0 4px ${S.gold}33,0 0 14px ${S.gold}` } : {}) }} />
       </div>
       {/* Card */}
-      <EntryCard entry={entry} chipColor={chipColor} chipBg={chipBg} chipBord={chipBord} onOpen={onOpen} />
-    </motion.div>
+      <EntryCard entry={entry} isDark={isDark} onOpen={onOpen} />
+    </div>
   );
 }
 
-// ── EntryCard ─────────────────────────────────────────────────────
-function EntryCard({ entry, chipColor, chipBg, chipBord, onOpen }: {
-  entry: AstroEntry;
-  chipColor: ChipFn; chipBg: ChipFn; chipBord: ChipFn;
-  onOpen: () => void;
+// ── EntryCard — CSS ::before accent bar, no Framer Motion ────────
+function EntryCard({ entry, isDark, onOpen }: {
+  entry: AstroEntry; isDark: boolean; onOpen: () => void;
 }) {
   const [hov, setHov] = useState(false);
   const h = hue(entry.category);
   const c = catInfo(entry.category);
+  const chipColor = isDark ? cc(h, 72) : cc(h, 35);
+  const chipBg    = cc(h, 50, 0.14);
+  const chipBord  = isDark ? cc(h, 55, 0.3) : cc(h, 45, 0.35);
   return (
-    <div onClick={onOpen} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
+    <div className="a-card" onClick={onOpen}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
       style={{
+        '--cat': h,
         background: S.surfaceA,
         border: `1px solid ${entry.milestone ? cc(h, 55, 0.4) : S.border}`,
-        borderLeft: `3px solid ${cc(h, hov ? 58 : 62, hov ? 1 : 0.4)}`,
         borderRadius: 14, padding: "16px 18px", marginBottom: 22, cursor: "pointer",
         position: "relative", overflow: "hidden",
         transform: hov ? "translateX(3px)" : "none",
         borderColor: hov ? S.border2 : (entry.milestone ? cc(h, 55, 0.4) : S.border),
         boxShadow: hov ? S.shadow : "0 1px 3px rgba(0,0,0,.05)",
         transition: "all .16s",
-      }}>
-      {/* Thumbnail */}
+      } as React.CSSProperties}>
       {entry.img && (
         <div style={{ float: "right", width: 78, height: 78, borderRadius: 10, margin: "0 0 4px 16px", background: `radial-gradient(circle at 35% 30%,${cc(h, 60, 0.5)},${cc(h, 22, 0.35)})`, border: `1px solid ${S.border}`, display: "grid", placeItems: "center", color: cc(h, 78), fontSize: 26 }}>
           {c.glyph}
         </div>
       )}
-      {/* Header row */}
       <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 9, flexWrap: "wrap" }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "monospace", fontSize: 10, letterSpacing: ".08em", textTransform: "uppercase", padding: "4px 9px", borderRadius: 999, color: chipColor(h), background: chipBg(h), border: `1px solid ${chipBord(h)}` }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "monospace", fontSize: 10, letterSpacing: ".08em", textTransform: "uppercase", padding: "4px 9px", borderRadius: 999, color: chipColor, background: chipBg, border: `1px solid ${chipBord}` }}>
           {c.glyph} {c.label}
         </span>
         {entry.milestone && (
@@ -709,23 +697,24 @@ function EntryCard({ entry, chipColor, chipBg, chipBord, onOpen }: {
 }
 
 // ── DetailPanel ───────────────────────────────────────────────────
-function DetailPanel({ entry, idx, total, filtered, onClose, onPrev, onNext, onCat, chipColor, chipBg, chipBord }: {
+function DetailPanel({ entry, idx, total, filtered, onClose, onPrev, onNext, onCat, isDark }: {
   entry: AstroEntry; idx: number; total: number; filtered: AstroEntry[];
   onClose: () => void; onPrev: () => void; onNext: () => void;
-  onCat: (c: AstroCategoryKey) => void;
-  chipColor: ChipFn; chipBg: ChipFn; chipBord: ChipFn;
+  onCat: (c: AstroCategoryKey) => void; isDark: boolean;
 }) {
   const h = hue(entry.category);
   const c = catInfo(entry.category);
   const prevYear = idx > 0 ? filtered[idx - 1].year : null;
   const nextYear = idx < total - 1 ? filtered[idx + 1].year : null;
+  const chipColor = isDark ? cc(h, 72) : cc(h, 35);
+  const chipBg    = cc(h, 50, 0.14);
+  const chipBord  = isDark ? cc(h, 55, 0.3) : cc(h, 45, 0.35);
   return (
     <>
-      {/* Hero region */}
       <div style={{ position: "relative", padding: "26px 28px 22px", overflow: "hidden", borderBottom: `1px solid ${S.border}` }}>
         <div style={{ position: "absolute", inset: 0, background: `radial-gradient(120% 100% at 80% 0%,${cc(h, 50, 0.28)},transparent 60%)` }} />
         <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 9, marginBottom: 16, flexWrap: "wrap" }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "monospace", fontSize: 10, letterSpacing: ".08em", textTransform: "uppercase", padding: "4px 9px", borderRadius: 999, color: chipColor(h), background: chipBg(h), border: `1px solid ${chipBord(h)}` }}>{c.glyph} {c.label}</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "monospace", fontSize: 10, letterSpacing: ".08em", textTransform: "uppercase", padding: "4px 9px", borderRadius: 999, color: chipColor, background: chipBg, border: `1px solid ${chipBord}` }}>{c.glyph} {c.label}</span>
           {entry.milestone && <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontFamily: "monospace", fontSize: 10, letterSpacing: ".1em", textTransform: "uppercase", padding: "4px 9px", borderRadius: 999, color: S.gold, background: `${S.gold}22`, border: `1px solid ${S.gold}5a` }}>★ Milestone</span>}
           <button onClick={onClose} style={{ marginLeft: "auto", width: 34, height: 34, borderRadius: 9, border: `1px solid ${S.border2}`, background: S.surface2, color: S.muted, cursor: "pointer", display: "grid", placeItems: "center", fontSize: 14 }}>✕</button>
         </div>
@@ -734,7 +723,6 @@ function DetailPanel({ entry, idx, total, filtered, onClose, onPrev, onNext, onC
           {entry.date ? `${entry.date} · ` : ""}{eraOf(entry.year)}
         </div>
       </div>
-      {/* Body */}
       <div style={{ padding: "26px 28px", overflowY: "auto", flex: 1 }}>
         {entry.img && (
           <div style={{ width: "100%", aspectRatio: "16/9", borderRadius: 12, marginBottom: 20, background: `radial-gradient(circle at 30% 25%,${cc(h, 55, 0.55)},${cc(h, 18, 0.4)})`, border: `1px solid ${S.border}`, display: "grid", placeItems: "center", position: "relative", overflow: "hidden" }}>
@@ -760,24 +748,23 @@ function DetailPanel({ entry, idx, total, filtered, onClose, onPrev, onNext, onC
         <div style={{ display: "flex", gap: 10 }}>
           <button onClick={() => onCat(entry.category)}
             style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, background: S.accent, color: "#fff", border: "none", borderRadius: 9, padding: "9px 15px", fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-            See {c.label} <span style={{ display: "inline-block", marginLeft: 2 }}>→</span>
+            See {c.label} →
           </button>
-          <button onClick={() => { const el = document.getElementById(`dec-${decOf(entry.year)}`); el?.scrollIntoView({ behavior: "smooth" }); onClose(); }}
+          <button onClick={() => { const el = document.getElementById(`dec-${decOf(entry.year)}`); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 150, behavior: "smooth" }); onClose(); }}
             style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, background: S.surface2, color: S.ink, border: `1px solid ${S.border2}`, borderRadius: 9, padding: "9px 15px", fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             Jump to {entry.year}
           </button>
         </div>
       </div>
-      {/* Footer nav — shows year of prev/next per design spec */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 28px", borderTop: `1px solid ${S.border}`, background: S.surface2 }}>
         <button onClick={onPrev} disabled={idx === 0}
           style={{ fontFamily: "inherit", fontSize: 13, fontWeight: 500, color: S.muted, background: "none", border: "none", cursor: idx === 0 ? "default" : "pointer", opacity: idx === 0 ? 0.35 : 1, display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 8px", borderRadius: 8 }}>
-          ←{prevYear ? ` ${prevYear}` : ""}
+          ← {prevYear ?? ""}
         </button>
         <span style={{ fontFamily: "monospace", fontSize: 11, color: S.dim }}>{idx + 1} / {total}</span>
         <button onClick={onNext} disabled={idx === total - 1}
           style={{ fontFamily: "inherit", fontSize: 13, fontWeight: 500, color: S.muted, background: "none", border: "none", cursor: idx === total - 1 ? "default" : "pointer", opacity: idx === total - 1 ? 0.35 : 1, display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 8px", borderRadius: 8 }}>
-          {nextYear ? `${nextYear} ` : ""}→
+          {nextYear ?? ""} →
         </button>
       </div>
     </>
