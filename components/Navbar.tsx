@@ -2,40 +2,21 @@
 
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import OrionMark from "./OrionMark";
 import SearchBar from "./SearchBar";
 import ThemeToggle from "./ThemeToggle";
-import MobileNav, { type NavItem } from "./MobileNav";
-import SpaceHubDropdown, {
-  HUB_ITEMS_EXPORT,
-  HUB_SECTIONS
-} from "./SpaceHubDropdown";
 
-// Top-level desktop items (4 only)
-const MAIN_ITEMS: NavItem[] = [
-  { id: "home", label: "Home", description: "Back to the top", section: "top" },
-  { id: "stories", label: "Top Stories", description: "Editorial picks", section: "stories" },
-  { id: "feed", label: "Latest News", description: "Full news feed", section: "feed" }
-];
-
-// All items for mobile drawer (flat with grouping hint)
-const ALL_ITEMS: NavItem[] = [
-  ...MAIN_ITEMS,
-  ...HUB_ITEMS_EXPORT.map((h) => ({
-    id: h.id,
-    label: h.label,
-    description: h.description,
-    section: h.section,
-    group: "hub" as const
-  }))
+const PAGE_LINKS = [
+  { href: "/",        label: "Home"    },
+  { href: "/timeline", label: "Timeline" },
 ];
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
-  const [activeSection, setActiveSection] = useState<string>("top");
+  const [activePath, setActivePath] = useState("/");
 
-  // scroll-aware glass density
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
     onScroll();
@@ -43,60 +24,10 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // active section observer — watch every section that maps to a nav item
+  // Detect current page path on the client — avoids usePathname hook issues
   useEffect(() => {
-    const ids = ["stories", "apod", "feed"];
-    const obs = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.filter((e) => e.isIntersecting);
-        if (visible.length > 0) {
-          const top = visible.sort(
-            (a, b) => a.boundingClientRect.top - b.boundingClientRect.top
-          )[0];
-          setActiveSection(top.target.id);
-        } else if (window.scrollY < 200) {
-          setActiveSection("top");
-        }
-      },
-      { rootMargin: "-30% 0px -60% 0px" }
-    );
-    ids.forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) obs.observe(el);
-    });
-    return () => obs.disconnect();
+    setActivePath(window.location.pathname);
   }, []);
-
-  const handleSelect = (sectionOrItem: NavItem | string) => {
-    const section =
-      typeof sectionOrItem === "string" ? sectionOrItem : sectionOrItem.section;
-    if (section === "top") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      window.dispatchEvent(new CustomEvent("orion:category", { detail: null }));
-    } else {
-      window.dispatchEvent(new CustomEvent("orion:category", { detail: null }));
-      document.getElementById(section)?.scrollIntoView({ behavior: "smooth" });
-    }
-  };
-
-  // Active id resolution
-  const activeId = (() => {
-    if (activeSection === "top") return "home";
-    if (activeSection === "stories") return "stories";
-    if (activeSection === "feed") return "feed";
-    if (HUB_SECTIONS.includes(activeSection)) return "spaceHub";
-    return "home";
-  })();
-
-  // For mobile drawer: granular active id including hub sub-items
-  const activeMobileId = (() => {
-    if (activeSection === "top") return "home";
-    if (activeSection === "stories") return "stories";
-    if (activeSection === "feed") return "feed";
-    const hubItem = HUB_ITEMS_EXPORT.find((h) => h.section === activeSection);
-    if (hubItem) return hubItem.id;
-    return "home";
-  })();
 
   return (
     <motion.header
@@ -116,10 +47,10 @@ export default function Navbar() {
           : "blur(8px) saturate(140%)",
         borderBottom: scrolled
           ? "1px solid rgb(var(--bg-border) / 0.7)"
-          : "1px solid transparent"
+          : "1px solid transparent",
       }}
     >
-      {/* HUD top scanline */}
+      {/* HUD scanline */}
       <div
         aria-hidden
         className="absolute top-0 left-0 right-0 h-px"
@@ -127,15 +58,16 @@ export default function Navbar() {
           background:
             "linear-gradient(90deg, transparent 0%, rgb(var(--neon-cyan) / 0.5) 50%, transparent 100%)",
           opacity: scrolled ? 1 : 0,
-          transition: "opacity 0.4s ease"
+          transition: "opacity 0.4s ease",
         }}
       />
 
       <div className="container mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">
         <div className="flex items-center h-[68px] gap-4 lg:gap-6">
-          {/* LEFT — Orion brand */}
-          <button
-            onClick={() => handleSelect("top")}
+
+          {/* LEFT — brand */}
+          <Link
+            href="/"
             className="flex items-center gap-2.5 shrink-0 group focus:outline-none"
             aria-label="Orion home"
           >
@@ -149,7 +81,8 @@ export default function Navbar() {
                   fontSize: 15,
                   fontWeight: 800,
                   letterSpacing: "0.08em",
-                  background: "linear-gradient(90deg, rgb(var(--neon-cyan)), rgb(var(--neon-violet)))",
+                  background:
+                    "linear-gradient(90deg, rgb(var(--neon-cyan)), rgb(var(--neon-violet)))",
                   WebkitBackgroundClip: "text",
                   backgroundClip: "text",
                   color: "transparent",
@@ -162,66 +95,65 @@ export default function Navbar() {
                 Explore the universe daily
               </span>
             </div>
-          </button>
+          </Link>
 
-          {/* CENTER — desktop nav (4 items) */}
-          <nav className="hidden lg:flex flex-1 items-center justify-center" aria-label="Primary">
+          {/* CENTER — page links (desktop only) */}
+          <nav
+            className="hidden lg:flex flex-1 items-center justify-center"
+            aria-label="Primary"
+          >
             <ul className="flex items-center gap-1">
-              {MAIN_ITEMS.map((item) => {
-                const isActive = item.id === activeId;
-                const isHover = hovered === item.id;
+              {PAGE_LINKS.map((link) => {
+                const isActive = activePath === link.href;
+                const isHover = hovered === link.href;
                 return (
-                  <li key={item.id}>
-                    <button
-                      onClick={() => handleSelect(item)}
-                      onMouseEnter={() => setHovered(item.id)}
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      onMouseEnter={() => setHovered(link.href)}
                       onMouseLeave={() => setHovered(null)}
-                      className="relative px-3 py-2 text-[13.5px] font-medium tracking-[0.01em] transition-colors duration-200"
+                      className="relative px-3 py-2 text-[13.5px] font-medium tracking-[0.01em] transition-colors duration-200 inline-block"
                       style={{
-                        color: isActive
-                          ? "rgb(var(--ink))"
-                          : isHover
-                          ? "rgb(var(--ink))"
-                          : "rgb(var(--ink-muted))"
+                        color:
+                          isActive || isHover
+                            ? "rgb(var(--ink))"
+                            : "rgb(var(--ink-muted))",
                       }}
                     >
-                      <span className="relative z-10">{item.label}</span>
+                      <span className="relative z-10">{link.label}</span>
 
+                      {/* hover wash */}
                       <span
                         aria-hidden
                         className="absolute inset-1 rounded-md transition-opacity duration-200 pointer-events-none"
                         style={{
                           opacity: isHover && !isActive ? 1 : 0,
-                          background: "rgb(var(--ink) / 0.04)"
+                          background: "rgb(var(--ink) / 0.04)",
                         }}
                       />
 
+                      {/* active underline */}
                       {isActive && (
                         <motion.span
                           aria-hidden
                           layoutId="nav-underline"
-                          transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 420,
+                            damping: 32,
+                          }}
                           className="absolute left-2.5 right-2.5 -bottom-0.5 h-[1.5px] rounded-full"
                           style={{
                             background:
                               "linear-gradient(90deg, rgb(var(--neon-cyan)), rgb(var(--neon-violet)))",
-                            boxShadow: "0 0 8px rgb(var(--neon-cyan) / 0.5)"
+                            boxShadow: "0 0 8px rgb(var(--neon-cyan) / 0.5)",
                           }}
                         />
                       )}
-                    </button>
+                    </Link>
                   </li>
                 );
               })}
-
-              {/* Space Hub dropdown */}
-              <li>
-                <SpaceHubDropdown
-                  isActive={activeId === "spaceHub"}
-                  activeSection={activeSection}
-                  onSelect={(s) => handleSelect(s)}
-                />
-              </li>
             </ul>
           </nav>
 
@@ -230,14 +162,7 @@ export default function Navbar() {
           {/* RIGHT — actions */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <SearchBar />
-            <div className="hidden sm:block">
-              <ThemeToggle />
-            </div>
-            <MobileNav
-              items={ALL_ITEMS}
-              activeId={activeMobileId}
-              onSelect={(it) => handleSelect(it)}
-            />
+            <ThemeToggle />
           </div>
         </div>
       </div>

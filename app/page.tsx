@@ -2,6 +2,7 @@ import { fetchDigest } from "@/lib/sheets";
 import Starfield from "@/components/Starfield";
 import DaytimeSky from "@/components/DaytimeSky";
 import Navbar from "@/components/Navbar";
+import HomeSidebar from "@/components/HomeSidebar";
 import HeroSection from "@/components/HeroSection";
 import TopStories from "@/components/TopStories";
 import LatestNews from "@/components/LatestNews";
@@ -35,33 +36,37 @@ export default async function Home() {
       <Starfield />
       <DaytimeSky />
       <Navbar />
+      <HomeSidebar />
 
-      {/* 1 — Hero (50/50): headline + APOD / Sky Tonight */}
-      <section id="top">
-        <HeroSection
-          storyCount={data.pulse.storyCount}
-          lastUpdated={data.lastUpdated}
-          pulse={data.pulse}
-          moon={data.moon}
-          observationQuality={data.observationQuality}
-          visiblePlanets={data.visiblePlanets}
-          viewingTime={data.viewingTime}
-          issCrewCount={data.issCrewCount}
-          apod={data.apod}
-        />
-      </section>
+      {/* Content — offset right on desktop to clear the sidebar */}
+      <div className="lg:pl-[200px]">
+        {/* 1 — Hero (50/50): headline + APOD / Sky Tonight */}
+        <section id="top">
+          <HeroSection
+            storyCount={data.pulse.storyCount}
+            lastUpdated={data.lastUpdated}
+            pulse={data.pulse}
+            moon={data.moon}
+            observationQuality={data.observationQuality}
+            visiblePlanets={data.visiblePlanets}
+            viewingTime={data.viewingTime}
+            issCrewCount={data.issCrewCount}
+            apod={data.apod}
+          />
+        </section>
 
-      {/* 2 — Top Stories (featured banner + 4 tiles) */}
-      <section id="stories" className="section-stripe">
-        <TopStories stories={data.topStories} />
-      </section>
+        {/* 2 — Top Stories (featured banner + 4 tiles) */}
+        <section id="stories" className="section-stripe">
+          <TopStories stories={data.topStories} />
+        </section>
 
-      {/* 3 — Latest News feed */}
-      <section id="feed" className="section-stripe py-10 md:py-14">
-        <LatestNews articles={data.all} />
-      </section>
+        {/* 3 — Latest News feed */}
+        <section id="feed" className="section-stripe py-10 md:py-14">
+          <LatestNews articles={data.all} />
+        </section>
 
-      <Footer lastUpdated={data.lastUpdated} count={data.all.length} />
+        <Footer lastUpdated={data.lastUpdated} count={data.all.length} />
+      </div>
     </main>
   );
 }

@@ -302,6 +302,39 @@ section[id] { scroll-margin-top: 96px; }
   }
 }
 
+/* ── Mobile (≤640px) ──────────────────────────────────────── */
+@media (max-width: 640px) {
+  /* Stats: 2×2 grid */
+  .astro-stats {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Sidebar: compact on mobile — only toggles + expand button visible by default */
+  .astro-sidebar {
+    display: flex !important;
+    flex-direction: column;
+    gap: 8px !important;
+    padding-right: 0 !important;
+  }
+  .astro-sidebar-panel {
+    display: none;
+  }
+  .astro-sidebar-panel.mobile-visible {
+    display: block;
+  }
+  .astro-mobile-filter-btn {
+    display: flex !important;
+  }
+
+  /* Scrubber decade ticks: horizontally scrollable */
+  .astro-scrubber-ticks {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .astro-scrubber-ticks::-webkit-scrollbar { display: none; }
+}
+
 /* Mega search box: 3-field row on desktop, stacked on mobile */
 .astro-qbox {
   display: grid;
@@ -424,7 +457,7 @@ section[id] { scroll-margin-top: 96px; }
 
 /* Sidebar full viewport height */
 .astro-sidebar {
-  height: calc(100vh - 92px);
+  height: calc(100vh - 68px);
 }
 
 /* Sidebar custom scrollbar */
@@ -446,7 +479,7 @@ section[id] { scroll-margin-top: 96px; }
    ARCHIVE NAV  (.an-*)
    ════════════════════════════════════════════════════════════ */
 
-/* Sticky wrapper — total height ~92px so sidebar/scrubber use top:92 */
+/* Sticky wrapper — total height ~68px so sidebar/scrubber use top:68 */
 .an-wrap {
   position: sticky;
   top: 0;
@@ -715,7 +748,7 @@ section[id] { scroll-margin-top: 96px; }
   visibility: visible;
 }
 
-/* decade anchor: clear sticky nav (92px) + scrubber (~74px) */
+/* decade anchor: clear sticky nav (68px) + scrubber (~74px) */
 [id^="dec-"] {
   scroll-margin-top: 180px;
 }

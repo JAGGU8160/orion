@@ -17,7 +17,7 @@ const HUB_ITEMS: HubItem[] = [
   { id: "sky",      label: "Sky Tonight",  description: "Visible from Gujarat",       icon: "🌙", section: "top"  },
   { id: "apod",     label: "NASA APOD",    description: "Picture of the day",         icon: "📸", section: "apod" },
   { id: "feed",     label: "Latest News",  description: "Full news feed",             icon: "🗄", section: "feed" },
-  { id: "pastnews", label: "Past News",    description: "Historical articles archive", icon: "📰", section: "pastnews", href: "/archive" },
+  { id: "pastnews", label: "Past News",    description: "Historical articles archive", icon: "📰", section: "pastnews", href: "/timeline" },
 ];
 
 export const HUB_SECTIONS = HUB_ITEMS.map((i) => i.section);

@@ -58,6 +58,7 @@ export default function AstroArchive() {
   const [detailEntry, setDetailEntry] = useState<{ entry: AstroEntry; idx: number } | null>(null);
   const [showTop, setShowTop]   = useState(false);
   const [statVis, setStatVis]   = useState(false);
+  const [mobileFilters, setMobileFilters] = useState(false);
   const [activeDec, setActiveDec] = useState<number>(1800);
   const [progPct, setProgPct]   = useState(0);
   const [isDark, setIsDark]     = useState(true);
@@ -261,11 +262,7 @@ export default function AstroArchive() {
     <div className="relative z-10" id="an-hero">
 
       {/* Hero section */}
-      <header style={{ maxWidth: 1080, margin: "56px auto 0", padding: "0 28px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 9, fontFamily: "monospace", fontSize: 11, letterSpacing: ".16em", textTransform: "uppercase", color: S.muted, padding: "7px 14px", border: `1px solid ${S.border}`, borderRadius: 999, background: S.surfaceA, backdropFilter: "blur(8px)" }}>
-          <span className="astro-dot-pulse" style={{ width: 6, height: 6, borderRadius: "50%", background: S.gold, display: "inline-block" }} />
-          <b style={{ color: S.ink }}>500</b>&nbsp;moments · 1801 – 2026
-        </span>
+      <header style={{ maxWidth: 1080, margin: "80px auto 0", padding: "0 28px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
         <h1 style={{ fontSize: "clamp(36px,5.4vw,64px)", lineHeight: 1.02, letterSpacing: "-.04em", fontWeight: 700, margin: "20px 0 16px", maxWidth: "17ch", color: S.ink }}>
           Two centuries of looking{" "}
           <em style={{ fontStyle: "normal", background: `linear-gradient(96deg,${S.accent},#9b7bff 45%,${S.accent2})`, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>up</em>
@@ -344,8 +341,42 @@ export default function AstroArchive() {
       <div ref={archiveRef} id="an-grid" className="astro-grid" style={{ maxWidth: 1480, margin: "40px auto 0", padding: "0 22px 120px" }}>
 
         {/* Sidebar — sticky top:92, fills full remaining viewport height */}
-        <aside className="astro-sidebar" style={{ position: "sticky", top: 92, alignSelf: "start", display: "flex", flexDirection: "column", gap: 14, overflowY: "auto", paddingRight: 4 }}>
-          <div style={panel}>
+        <aside className="astro-sidebar" style={{ position: "sticky", top: 68, alignSelf: "start", display: "flex", flexDirection: "column", gap: 14, overflowY: "auto", paddingRight: 4 }}>
+
+          {/* Toggles — compact 2-col at top */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {([
+              { k: "milestoneOnly" as const, label: "Milestones", icon: "★" },
+              { k: "imageOnly"     as const, label: "Imagery",    icon: "🖼" },
+            ] as const).map((t) => {
+              const on = f[t.k] as boolean;
+              return (
+                <div key={t.k} onClick={() => upd(t.k, !on)}
+                  style={{ display: "flex", flexDirection: "column", gap: 7, padding: "9px 11px", borderRadius: 10, cursor: "pointer", background: on ? `${S.accent}18` : S.surface, border: `1px solid ${on ? S.accent : S.border}`, transition: "all .15s" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: on ? S.ink : S.muted, fontWeight: 500 }}>
+                    <span style={{ color: S.gold }}>{t.icon}</span>
+                    {t.label}
+                  </div>
+                  <div style={{ width: 32, height: 18, borderRadius: 99, background: on ? S.accent : S.border2, position: "relative", transition: "background .18s", flexShrink: 0 }}>
+                    <div style={{ position: "absolute", top: 2, left: on ? 14 : 2, width: 14, height: 14, borderRadius: "50%", background: on ? "#fff" : S.muted, transition: "left .18s, background .18s" }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Mobile "More filters" toggle — hidden on desktop via CSS */}
+          <button
+            className="astro-mobile-filter-btn"
+            onClick={() => setMobileFilters(v => !v)}
+            style={{ display: "none", width: "100%", padding: "10px 14px", borderRadius: 10, border: `1px solid ${S.border}`, background: S.surface, cursor: "pointer", fontSize: 13, fontWeight: 500, color: S.muted, textAlign: "left", alignItems: "center", gap: 8 }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={S.dim} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
+            {mobileFilters ? "Hide filters" : "More filters"}
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={S.dim} strokeWidth="2" strokeLinecap="round" style={{ marginLeft: "auto", transform: mobileFilters ? "rotate(180deg)" : "none", transition: "transform .2s" }}><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+
+          <div className={`astro-sidebar-panel${mobileFilters ? " mobile-visible" : ""}`} style={panel}>
             <div style={{ display: "flex", alignItems: "center", gap: 9, background: S.surface2, border: `1px solid ${S.border}`, borderRadius: 10, padding: "10px 12px" }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke={S.dim} strokeWidth="2"/><path d="M21 21l-4-4" stroke={S.dim} strokeWidth="2" strokeLinecap="round"/></svg>
               <input type="text" value={f.text} placeholder="Search 500 moments…"
@@ -354,7 +385,7 @@ export default function AstroArchive() {
             </div>
           </div>
 
-          <div style={panel}>
+          <div className={`astro-sidebar-panel${mobileFilters ? " mobile-visible" : ""}`} style={panel}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <span style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: ".14em", textTransform: "uppercase", color: S.dim }}>Era Range</span>
               {(f.yMin !== Y_MIN || f.yMax !== Y_MAX) && (
@@ -377,7 +408,7 @@ export default function AstroArchive() {
             </div>
           </div>
 
-          <div style={panel}>
+          <div className={`astro-sidebar-panel${mobileFilters ? " mobile-visible" : ""}`} style={panel}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 13 }}>
               <span style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: ".14em", textTransform: "uppercase", color: S.dim }}>Categories</span>
               {f.cats.size > 0 && (
@@ -403,7 +434,7 @@ export default function AstroArchive() {
             </div>
           </div>
 
-          <div style={panel}>
+          <div className={`astro-sidebar-panel${mobileFilters ? " mobile-visible" : ""}`} style={panel}>
             <div style={{ marginBottom: 10 }}>
               <span style={{ fontFamily: "monospace", fontSize: 10.5, letterSpacing: ".14em", textTransform: "uppercase", color: S.dim }}>Observatory / Source</span>
             </div>
@@ -414,33 +445,13 @@ export default function AstroArchive() {
             </select>
           </div>
 
-          <div style={panel}>
-            {([
-              { k: "milestoneOnly" as const, label: "Milestones only", icon: "★", desc: "The era-defining discoveries" },
-              { k: "imageOnly"     as const, label: "Has imagery",      icon: "🖼", desc: "Entries with a visual" },
-            ] as const).map((t, ti) => {
-              const on = f[t.k] as boolean;
-              return (
-                <div key={t.k} onClick={() => upd(t.k, !on)}
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 2px", cursor: "pointer", borderBottom: ti === 0 ? `1px solid ${S.border}` : "none", marginBottom: ti === 0 ? 4 : 0 }}>
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13.5, color: S.ink }}><span style={{ color: S.gold }}>{t.icon}</span>{t.label}</div>
-                    <div style={{ fontSize: 11.5, color: S.dim, marginTop: 1 }}>{t.desc}</div>
-                  </div>
-                  <div style={{ width: 38, height: 22, borderRadius: 99, background: on ? S.accent : S.surface2, border: `1px solid ${on ? S.accent : S.border2}`, position: "relative", flexShrink: 0, transition: "all .18s" }}>
-                    <div style={{ position: "absolute", top: 2, left: on ? 18 : 2, width: 16, height: 16, borderRadius: "50%", background: on ? "#fff" : S.muted, transition: "left .18s,background .18s" }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </aside>
 
         {/* Feed column */}
         <div ref={feedRef} style={{ minWidth: 0 }}>
 
-          {/* Scrubber — sticky top:92 (design spec) */}
-          <div style={{ position: "sticky", top: 92, zIndex: 30, marginBottom: 6, background: `${S.surface}cc`, border: `1px solid ${S.border}`, borderRadius: 14, padding: "12px 16px", backdropFilter: "blur(12px)", boxShadow: S.shadow }}>
+          {/* Scrubber */}
+          <div style={{ position: "sticky", top: 68, zIndex: 30, marginBottom: 6, marginTop: 12, background: `${S.surface}cc`, border: `1px solid ${S.border}`, borderRadius: 14, padding: "12px 16px", backdropFilter: "blur(12px)", boxShadow: S.shadow }}>
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 14, marginBottom: 11, flexWrap: "wrap" }}>
               <div style={{ fontSize: 14, color: S.muted }}>
                 <b style={{ color: S.ink, fontWeight: 600 }}>{filtered.length.toLocaleString()}</b> moments · {filtered.filter(e => e.milestone).length} milestones
@@ -455,7 +466,7 @@ export default function AstroArchive() {
                 ))}
               </div>
             </div>
-            <div style={{ position: "relative", height: 36 }}>
+            <div className="astro-scrubber-ticks" style={{ position: "relative", height: 36 }}>
               <div style={{ position: "absolute", top: 22, left: 0, right: 0, height: 2, background: S.surface2, borderRadius: 2 }} />
               <div style={{ position: "absolute", top: 22, left: 0, width: `${progPct}%`, height: 2, background: `linear-gradient(90deg,${S.accent},${S.accent2})`, borderRadius: 2, transition: "width .15s", zIndex: 1 }} />
               {DECADES.map(d => {
