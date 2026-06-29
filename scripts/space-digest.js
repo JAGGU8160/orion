@@ -2,9 +2,10 @@
 // Orion Space Agent — GitHub Actions port of n8n v5 workflow
 // Runs every 6h: fetches space data → Groq AI → Telegram (2 digests)
 
-const GROQ_KEY = process.env.GROQ_API_KEY;
-const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const TG_CHAT  = '-1003942481207';
+const GROQ_KEY    = process.env.GROQ_API_KEY;
+const TG_TOKEN    = process.env.TELEGRAM_BOT_TOKEN;
+const TG_CHAT     = '-1003942481207';
+const SHEET_URL   = process.env.GOOGLE_SHEET_URL; // Apps Script web app URL
 
 // ─── helpers ───────────────────────────────────────────────────────────────
 
@@ -170,7 +171,37 @@ async function main() {
   });
   console.log(`Enriched ${enriched.length} articles`);
 
-  // ── 4. BUILD & SEND REGULAR DIGEST ───────────────────────────────────────
+  // ── 4. SAVE TO GOOGLE SHEETS ──────────────────────────────────────────────
+  if (SHEET_URL) {
+    try {
+      const rows = enriched.map(i => ({
+        'Timestamp':       i.timestamp,
+        'Type':            i.type,
+        'Source':          i.source,
+        'Title':           i.title,
+        'AI Summary':      i.ai_summary,
+        'Tweet':           i.tweet,
+        'Local Note':      i.local_note,
+        'Category':        i.category,
+        'Local Relevance': i.local_relevance,
+        'URL':             i.url,
+        'Image URL':       i.image_url,
+        'Published At':    i.published,
+      }));
+      await fetch(SHEET_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(rows),
+      });
+      console.log(`Saved ${rows.length} rows to Google Sheets`);
+    } catch (e) {
+      console.warn('Google Sheets write failed:', e.message);
+    }
+  } else {
+    console.log('GOOGLE_SHEET_URL not set — skipping Sheets');
+  }
+
+  // ── 6. BUILD & SEND REGULAR DIGEST ───────────────────────────────────────
   const local       = enriched.filter(i => i.local_relevance.startsWith('HIGH'));
   const apodItem    = enriched.find(i => i.type === 'apod');
   const asteroidItem = enriched.find(i => i.type === 'asteroid');
