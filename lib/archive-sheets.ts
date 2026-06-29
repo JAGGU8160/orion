@@ -1,7 +1,7 @@
 import type { Article, Category } from "./types";
 import { storyExcitement, readingTime } from "./insights";
 
-const SHEET_ID = "1hqV9_Y7k6ja3buGTMIpY9DV-D4dpPPe1jSfsxHFOIs4";
+const SHEET_ID = "1qwWGdWZefnEYRPtPYcfC3X6glageOwwXnF2LH42r1x8";
 // explicit limit 2000 forces gviz to return all rows (default truncates large sheets)
 const ARCHIVE_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=1043900561&headers=1&tq=select%20*%20limit%202000`;
 

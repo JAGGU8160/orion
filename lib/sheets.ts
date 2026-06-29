@@ -11,7 +11,7 @@ import {
   trendingTopics
 } from "./insights";
 
-const SHEET_ID = "1hqV9_Y7k6ja3buGTMIpY9DV-D4dpPPe1jSfsxHFOIs4";
+const SHEET_ID = "1qwWGdWZefnEYRPtPYcfC3X6glageOwwXnF2LH42r1x8";
 const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=0&headers=1`;
 
 const VALID_CATEGORIES: Category[] = [
