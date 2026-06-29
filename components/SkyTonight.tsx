@@ -150,7 +150,7 @@ export default function SkyTonight({
 function MoonViz({ moon }: { moon: MoonPhase }) {
   const illumPct = moon.illumination / 100;
   const r = 48;
-  const shadowOffset = (1 - illumPct) * 2 * r * (moon.waxing ? -1 : 1);
+  const shadowOffset = illumPct * 2 * r * (moon.waxing ? 1 : -1);
 
   return (
     <div className="relative w-32 h-32 sm:w-36 sm:h-36">
