@@ -26,5 +26,9 @@ jobs:
           GOOGLE_SHEET_URL: ${{ secrets.GOOGLE_SHEET_URL }}
 
       - name: Trigger Vercel Redeploy
-        if: ${{ secrets.VERCEL_DEPLOY_HOOK != '' }}
-        run: curl -s -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}"
+        run: |
+          if [ -n "$VERCEL_DEPLOY_HOOK" ]; then
+            curl -s -X POST "$VERCEL_DEPLOY_HOOK"
+          fi
+        env:
+          VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}

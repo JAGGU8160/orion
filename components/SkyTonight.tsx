@@ -150,81 +150,89 @@ export default function SkyTonight({
 function MoonViz({ moon }: { moon: MoonPhase }) {
   const illumPct = moon.illumination / 100;
   const r = 48;
-  const shadowOffset = illumPct * 2 * r * (moon.waxing ? 1 : -1);
+  // Shadow moves left for waxing (right side lit), right for waning (left side lit)
+  // At full moon (illumPct=1): shadow offset = ±2r → completely off the disc
+  // At new moon (illumPct=0): shadow offset = 0 → centered, covers full disc
+  const shadowOffset = illumPct * 2 * r * (moon.waxing ? -1 : 1);
+  const glowOpacity = Math.max(0, (illumPct - 0.7) / 0.3); // glow starts at 70% illumination
 
   return (
     <div className="relative w-32 h-32 sm:w-36 sm:h-36">
       <svg viewBox="-70 -70 140 140" className="w-full h-full">
         <defs>
-          {/* Dark "night sky" backdrop — independent of page theme */}
           <radialGradient id="moon-sky" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor="#1e293b" />
             <stop offset="65%" stopColor="#0f172a" />
             <stop offset="100%" stopColor="#020617" />
           </radialGradient>
-          {/* Soft outer halo so the medallion blends gently with the card */}
-          <radialGradient id="moon-medallion-glow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="rgb(var(--neon-cyan))" stopOpacity="0" />
-            <stop offset="80%" stopColor="rgb(var(--neon-cyan))" stopOpacity="0" />
-            <stop offset="100%" stopColor="rgb(var(--neon-cyan))" stopOpacity="0.22" />
+          <radialGradient id="moon-glow-halo" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#fffde7" stopOpacity="0" />
+            <stop offset="60%" stopColor="#fffde7" stopOpacity="0" />
+            <stop offset="100%" stopColor="#fffde7" stopOpacity={glowOpacity * 0.5} />
           </radialGradient>
-          {/* Moon surface */}
-          <radialGradient id="moon-surface" cx="35%" cy="35%" r="70%">
-            <stop offset="0%" stopColor="#fafaf9" />
-            <stop offset="55%" stopColor="#d4d4d8" />
-            <stop offset="100%" stopColor="#52525b" />
+          {/* Moon surface — bright silver/white, not dark at edges */}
+          <radialGradient id="moon-surface" cx="38%" cy="32%" r="75%">
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="50%" stopColor="#e8e8e4" />
+            <stop offset="100%" stopColor="#c4c4be" />
           </radialGradient>
         </defs>
 
-        {/* Halo ring (extends beyond medallion edge) */}
-        <circle cx="0" cy="0" r="66" fill="url(#moon-medallion-glow)" />
+        {/* Full moon glow halo */}
+        {glowOpacity > 0 && (
+          <circle cx="0" cy="0" r="66" fill="url(#moon-glow-halo)" />
+        )}
 
-        {/* Dark medallion / "night sky window" */}
+        {/* Dark medallion */}
         <circle
           cx="0" cy="0" r="60"
           fill="url(#moon-sky)"
-          stroke="rgb(var(--bg-border))"
+          stroke="rgba(255,255,255,0.08)"
           strokeWidth="1"
-          strokeOpacity="0.7"
         />
 
-        {/* Sprinkled stars inside the medallion */}
-        <circle cx="-42" cy="-28" r="0.8" fill="#fff" opacity="0.8">
-          <animate attributeName="opacity" values="0.3;1;0.3" dur="3.2s" repeatCount="indefinite" />
+        {/* Stars (hidden behind bright moon via opacity) */}
+        <circle cx="-42" cy="-28" r="0.8" fill="#fff" opacity={0.8 * (1 - illumPct * 0.9)}>
+          <animate attributeName="opacity" values={`${0.3*(1-illumPct*0.9)};${1*(1-illumPct*0.9)};${0.3*(1-illumPct*0.9)}`} dur="3.2s" repeatCount="indefinite" />
         </circle>
-        <circle cx="38" cy="-44" r="0.6" fill="#fff" opacity="0.55" />
-        <circle cx="46" cy="22" r="0.7" fill="#fff" opacity="0.7">
-          <animate attributeName="opacity" values="0.4;1;0.4" dur="2.6s" begin="0.8s" repeatCount="indefinite" />
-        </circle>
-        <circle cx="-48" cy="30" r="0.5" fill="#fff" opacity="0.45" />
-        <circle cx="-28" cy="48" r="0.6" fill="#fff" opacity="0.5">
-          <animate attributeName="opacity" values="0.2;0.9;0.2" dur="3.6s" begin="1.4s" repeatCount="indefinite" />
-        </circle>
-        <circle cx="32" cy="-12" r="0.5" fill="#fff" opacity="0.55" />
+        <circle cx="38" cy="-44" r="0.6" fill="#fff" opacity={0.55 * (1 - illumPct * 0.9)} />
+        <circle cx="46" cy="22" r="0.7" fill="#fff" opacity={0.7 * (1 - illumPct * 0.9)} />
+        <circle cx="-48" cy="30" r="0.5" fill="#fff" opacity={0.45 * (1 - illumPct * 0.9)} />
 
-        {/* Clip the moon + shadow to the medallion so they never escape */}
         <clipPath id="moon-clip">
           <circle cx="0" cy="0" r="60" />
         </clipPath>
 
         <g clipPath="url(#moon-clip)">
-          {/* Moon body */}
+          {/* Moon body — bright surface */}
           <circle cx="0" cy="0" r={r} fill="url(#moon-surface)" />
           {/* Terminator shadow */}
           <ellipse
             cx={shadowOffset}
             cy="0"
-            rx={r * 0.98}
+            rx={r * 0.99}
             ry={r}
-            fill="#0a0e1f"
-            opacity="0.94"
+            fill="#080d1e"
+            opacity="0.96"
           />
-          {/* Maria — only show on illuminated side */}
-          <circle cx="-16" cy="-8" r="5.5" fill="rgba(82, 82, 91, 0.4)" />
-          <circle cx="7" cy="12" r="4" fill="rgba(82, 82, 91, 0.32)" />
-          <circle cx="20" cy="-18" r="2.6" fill="rgba(82, 82, 91, 0.3)" />
-          <circle cx="-22" cy="18" r="2" fill="rgba(82, 82, 91, 0.28)" />
+          {/* Maria (lunar seas) */}
+          <circle cx="-16" cy="-8" r="5.5" fill="rgba(100,100,95,0.35)" />
+          <circle cx="7" cy="12" r="4" fill="rgba(100,100,95,0.28)" />
+          <circle cx="20" cy="-18" r="2.6" fill="rgba(100,100,95,0.25)" />
+          <circle cx="-22" cy="18" r="2" fill="rgba(100,100,95,0.22)" />
         </g>
+
+        {/* Bright rim for full/gibbous moon */}
+        {illumPct > 0.85 && (
+          <circle
+            cx="0" cy="0" r={r}
+            fill="none"
+            stroke="#fffde7"
+            strokeWidth="1.5"
+            opacity={glowOpacity * 0.6}
+            clipPath="url(#moon-clip)"
+          />
+        )}
       </svg>
     </div>
   );
