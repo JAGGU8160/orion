@@ -1,4 +1,17 @@
+import type { Metadata } from "next";
 import { fetchDigest } from "@/lib/sheets";
+
+export const metadata: Metadata = {
+  title: "Orion Space Digest — Live Astronomy News for Gujarat & Ahmedabad",
+  description:
+    "Tonight's sky from Ahmedabad, live NASA news, full moon & new moon dates, asteroid alerts, ISS crew updates and stargazing events for Gujarat. Updated every 6 hours.",
+  alternates: { canonical: "https://orion-space-digest.vercel.app" },
+  openGraph: {
+    title: "Orion Space Digest — Live Astronomy News for Gujarat & Ahmedabad",
+    description: "Tonight's sky from Ahmedabad, NASA APOD, asteroid alerts & stargazing events. Updated every 6 hours by Invincible Project Orion.",
+    url: "https://orion-space-digest.vercel.app",
+  },
+};
 import Starfield from "@/components/Starfield";
 import DaytimeSky from "@/components/DaytimeSky";
 import Navbar from "@/components/Navbar";
