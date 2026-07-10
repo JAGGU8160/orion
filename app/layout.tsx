@@ -59,6 +59,12 @@ export const metadata: Metadata = {
     images: ["/whitelogo.png"],
   },
   category: "science",
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
+    other: {
+      "msvalidate.01": process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION ?? "",
+    },
+  },
 };
 
 export const viewport: Viewport = {

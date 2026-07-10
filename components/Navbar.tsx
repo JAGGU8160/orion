@@ -8,8 +8,10 @@ import SearchBar from "./SearchBar";
 import ThemeToggle from "./ThemeToggle";
 
 const PAGE_LINKS = [
-  { href: "/",        label: "Home"    },
+  { href: "/",         label: "Home"     },
   { href: "/timeline", label: "Timeline" },
+  { href: "/blog",     label: "Blog"     },
+  { href: "/about",    label: "About"    },
 ];
 
 export default function Navbar() {
