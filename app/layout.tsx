@@ -60,7 +60,7 @@ export const metadata: Metadata = {
   },
   category: "science",
   verification: {
-    google: "762ca38b69d98463",
+    google: "8woL7mskspTLiqeiCVG_0iCvl1048HKFR6rugvzRFJk",
     other: {
       "msvalidate.01": process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION ?? "",
     },
