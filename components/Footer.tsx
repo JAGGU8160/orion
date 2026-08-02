@@ -1,6 +1,6 @@
 "use client";
 
-export default function Footer({ lastUpdated, count }: { lastUpdated: string; count: number }) {
+export default function Footer({ lastUpdated = "", count = 0 }: { lastUpdated?: string; count?: number }) {
   const updated = lastUpdated
     ? new Date(lastUpdated).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", hour12: false })
     : "";
