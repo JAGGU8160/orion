@@ -9,6 +9,90 @@ const SHEET_URL   = process.env.GOOGLE_SHEET_URL; // Apps Script web app URL
 
 // ─── helpers ───────────────────────────────────────────────────────────────
 
+// Keywords that indicate real astronomy enthusiast content
+const ASTRO_KEYWORDS = [
+  'conjunction', 'opposition', 'occultation', 'transit', 'elongation',
+  'meteor', 'meteorite', 'meteor shower', 'perseid', 'leonid', 'geminid', 'orionid', 'lyrid',
+  'eclipse', 'lunar eclipse', 'solar eclipse', 'annular',
+  'supermoon', 'full moon', 'new moon', 'blue moon', 'blood moon', 'harvest moon',
+  'comet', 'asteroid', 'near-earth', 'flyby', 'close approach',
+  'aurora', 'northern lights', 'southern lights',
+  'nebula', 'galaxy', 'cluster', 'deep sky', 'hubble', 'jwst', 'james webb',
+  'planet', 'venus', 'mars', 'jupiter', 'saturn', 'mercury', 'uranus', 'neptune',
+  'visible', 'naked eye', 'binoculars', 'telescope', 'stargazing', 'sky tonight',
+  'constellation', 'milky way', 'shooting star', 'fireball', 'bolide',
+  'solstice', 'equinox', 'perihelion', 'aphelion', 'perigee', 'apogee',
+  'exoplanet', 'black hole', 'neutron star', 'supernova', 'pulsar',
+  'rare', 'once in', 'century', 'decade', 'phenomenon',
+];
+
+function isAstronomyContent(title, description) {
+  const text = (title + ' ' + description).toLowerCase();
+  return ASTRO_KEYWORDS.some(kw => text.includes(kw));
+}
+
+// Bad keywords — filter these OUT
+const SKIP_KEYWORDS = [
+  'funding', 'raises', 'million', 'billion', 'investor', 'ipo', 'valuation',
+  'contract', 'awarded', 'acquisition', 'merger', 'ceo', 'executive', 'appointed',
+  'launch vehicle', 'rocket lab', 'blue origin', 'spacex starship', 'relativity',
+  'satellite internet', 'starlink', 'broadband', 'telecoms',
+];
+
+function isSpaceIndustryNoise(title) {
+  const t = title.toLowerCase();
+  return SKIP_KEYWORDS.some(kw => t.includes(kw));
+}
+
+// ─── RSS parser (no external deps) ─────────────────────────────────────────
+async function fetchRSS(url, limit = 8) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 14000);
+  try {
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      headers: { 'User-Agent': 'OrionSpaceDigest/1.0 (astronomy enthusiast feed)' },
+    });
+    if (!res.ok) { console.warn(`SKIP RSS ${url} → ${res.status}`); return []; }
+    const xml = await res.text();
+    const items = [];
+    const rx = /<item>([\s\S]*?)<\/item>/g;
+    let m;
+    while ((m = rx.exec(xml)) !== null) {
+      const block = m[1];
+      const tag = (name) => {
+        const r = block.match(new RegExp(`<${name}[^>]*>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?<\\/${name}>`, 'i'));
+        return r ? r[1].replace(/<[^>]+>/g, '').trim() : '';
+      };
+      const link = tag('link') || block.match(/<link>\s*([^<]+)\s*<\/link>/i)?.[1]?.trim() || '';
+      items.push({ title: tag('title'), description: tag('description').slice(0, 400), link, pubDate: tag('pubDate') });
+    }
+    return items.filter(i => i.title).slice(0, limit);
+  } catch (e) { console.warn(`SKIP RSS ${url} → ${e.message}`); return []; }
+  finally { clearTimeout(t); }
+}
+
+// ─── Upcoming meteor showers (hardcoded 2026 calendar) ─────────────────────
+function getUpcomingShower() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const showers = [
+    { name: 'Quadrantids',  peak: new Date(`${y}-01-03`), rate: 120, radiant: 'Boötes',    active: [1,1,  1,10]  },
+    { name: 'Lyrids',       peak: new Date(`${y}-04-22`), rate: 18,  radiant: 'Lyra',       active: [4,16, 4,25]  },
+    { name: 'Eta Aquariids', peak: new Date(`${y}-05-06`), rate: 50,  radiant: 'Aquarius',   active: [4,19, 5,28]  },
+    { name: 'Perseids',     peak: new Date(`${y}-08-12`), rate: 100, radiant: 'Perseus',    active: [7,17, 8,24]  },
+    { name: 'Orionids',     peak: new Date(`${y}-10-21`), rate: 20,  radiant: 'Orion',      active: [10,2, 11,7]  },
+    { name: 'Leonids',      peak: new Date(`${y}-11-17`), rate: 15,  radiant: 'Leo',        active: [11,6, 11,30] },
+    { name: 'Geminids',     peak: new Date(`${y}-12-13`), rate: 150, radiant: 'Gemini',     active: [12,4, 12,20] },
+    { name: 'Ursids',       peak: new Date(`${y}-12-22`), rate: 10,  radiant: 'Ursa Minor', active: [12,17,12,26] },
+  ];
+  const soon = showers.filter(s => {
+    const diff = (s.peak - now) / 86400000;
+    return diff >= -3 && diff <= 14; // ±3 days past peak or up to 14 days ahead
+  });
+  return soon[0] || null;
+}
+
 async function fetchJson(url) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 12000);
@@ -75,8 +159,11 @@ async function main() {
 
   // ── 1. FETCH ALL SOURCES ──────────────────────────────────────────────────
   console.log('Fetching sources...');
-  const [spaceNews, apod, asteroids, sky, iss] = await Promise.all([
-    fetchJson('https://api.spaceflightnewsapi.net/v4/articles/?limit=8&ordering=-published_at'),
+  const [earthsky, skytel, universetoday, nasawatch, apod, asteroids, sky, iss] = await Promise.all([
+    fetchRSS('https://earthsky.org/feed', 10),
+    fetchRSS('https://skyandtelescope.org/astronomy-news/feed/', 8),
+    fetchRSS('https://www.universetoday.com/feed/', 8),
+    fetchRSS('https://blogs.nasa.gov/watch_the_skies/feed/', 6),
     fetchJson('https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY'),
     fetchJson('https://api.nasa.gov/neo/rest/v1/feed?api_key=DEMO_KEY'),
     fetchJson('https://api.visibleplanets.dev/v3?latitude=22.2587&longitude=71.1924&constellation=true'),
@@ -87,15 +174,36 @@ async function main() {
   const normalized = [];
   const seen = new Set();
 
-  if (spaceNews?.results) {
-    for (const a of spaceNews.results.slice(0, 8)) {
-      if (!a.url || seen.has(a.url)) continue;
-      seen.add(a.url);
-      normalized.push({ type: 'global_news', source: a.news_site || 'SpaceNews',
-        title: clean(a.title), summary: clean(a.summary, 280),
-        url: a.url, image_url: a.image_url || '', published: a.published_at || '',
-        local_relevance: 'low' });
+  // RSS feeds — astronomy events only (filter out industry/funding noise)
+  const rssSources = [
+    { items: earthsky,      source: 'EarthSky' },
+    { items: skytel,        source: 'Sky & Telescope' },
+    { items: universetoday, source: 'Universe Today' },
+    { items: nasawatch,     source: 'NASA Watch the Skies' },
+  ];
+  for (const { items, source } of rssSources) {
+    for (const a of (items || [])) {
+      if (!a.link || seen.has(a.link)) continue;
+      if (isSpaceIndustryNoise(a.title)) continue;
+      if (!isAstronomyContent(a.title, a.description)) continue;
+      seen.add(a.link);
+      normalized.push({ type: 'astronomy_event', source,
+        title: clean(a.title), summary: clean(a.description, 280),
+        url: a.link, image_url: '', published: a.pubDate || '',
+        local_relevance: 'medium' });
     }
+  }
+
+  // Upcoming meteor shower alert
+  const shower = getUpcomingShower();
+  if (shower) {
+    const daysAway = Math.round((shower.peak - new Date()) / 86400000);
+    const when = daysAway === 0 ? 'TONIGHT' : daysAway > 0 ? `in ${daysAway} day${daysAway > 1 ? 's' : ''}` : `peaked ${Math.abs(daysAway)} day${Math.abs(daysAway) > 1 ? 's' : ''} ago`;
+    normalized.push({ type: 'meteor_shower', source: 'Meteor Shower Calendar',
+      title: `${shower.name} Meteor Shower peaks ${when} — up to ${shower.rate} meteors/hour`,
+      summary: `The ${shower.name} meteor shower radiates from ${shower.radiant}. Peak: ${shower.peak.toDateString()}. Best viewed after midnight, away from city lights. From Gujarat, look toward ${shower.radiant} constellation.`,
+      url: 'https://earthsky.org/astronomy-essentials/earthskys-meteor-shower-guide/',
+      image_url: '', published: new Date().toISOString(), local_relevance: 'HIGH Gujarat specific' });
   }
 
   if (apod?.title && apod?.explanation) {
@@ -202,11 +310,12 @@ async function main() {
   }
 
   // ── 6. BUILD & SEND REGULAR DIGEST ───────────────────────────────────────
-  const local       = enriched.filter(i => i.local_relevance.startsWith('HIGH'));
-  const apodItem    = enriched.find(i => i.type === 'apod');
+  const local        = enriched.filter(i => i.local_relevance.startsWith('HIGH'));
+  const apodItem     = enriched.find(i => i.type === 'apod');
   const asteroidItem = enriched.find(i => i.type === 'asteroid');
-  const crewItem    = enriched.find(i => i.type === 'iss_crew');
-  const newsItems   = enriched.filter(i => i.type === 'global_news').slice(0, 3);
+  const crewItem     = enriched.find(i => i.type === 'iss_crew');
+  const showerItem   = enriched.find(i => i.type === 'meteor_shower');
+  const newsItems    = enriched.filter(i => i.type === 'astronomy_event').slice(0, 3);
   const today       = istDate();
 
   let msg = `🛸 *ORION SPACE DIGEST*\n📅 ${today}\n\n`;
@@ -226,11 +335,12 @@ async function main() {
     msg += '\n\n';
   }
 
+  if (showerItem)    msg += `🌠 *METEOR SHOWER*\n${showerItem.ai_summary || showerItem.summary}\n\n`;
   if (asteroidItem) msg += `☄️ *ASTEROID WATCH*\n${asteroidItem.ai_summary || asteroidItem.summary}\n\n`;
   if (crewItem)     msg += `👨‍🚀 *IN SPACE RIGHT NOW*\n${crewItem.ai_summary || crewItem.summary}\n\n`;
 
   if (newsItems.length > 0) {
-    msg += '📰 *SPACE NEWS*\n';
+    msg += '🔭 *ASTRONOMY EVENTS*\n';
     for (const n of newsItems) {
       const s = n.ai_summary || n.summary;
       if (s) msg += `• ${s}\n`;

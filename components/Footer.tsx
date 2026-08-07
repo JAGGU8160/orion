@@ -21,7 +21,7 @@ export default function Footer({ lastUpdated = "", count = 0 }: { lastUpdated?: 
             <div className="section-title mb-3">Data sources</div>
             <ul className="space-y-1.5 text-sm text-ink-muted">
               <li>NASA APOD &amp; Near-Earth Objects</li>
-              <li>Spaceflight News API</li>
+              <li>EarthSky · Sky &amp; Telescope · Universe Today</li>
               <li>Visible Planets API · Open Notify</li>
               <li>Groq · Llama 3.3 (summaries)</li>
             </ul>
