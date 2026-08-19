@@ -85,10 +85,18 @@ export async function fetchArchive(): Promise<ArchiveResult> {
     )
     .filter((a) => a.title || a.aiSummary);
 
+  const FUNDING_NOISE_KW = [
+    'funding', 'raises', 'raised', 'valuation', 'investor', 'ipo',
+    'acquisition', 'acquires', 'merger', 'ceo appointed', 'contract awarded',
+  ];
+  const filtered = articles.filter(a =>
+    !FUNDING_NOISE_KW.some(kw => a.title.toLowerCase().includes(kw))
+  );
+
   // Deduplicate
   const seen = new Set<string>();
   const deduped: Article[] = [];
-  for (const a of articles) {
+  for (const a of filtered) {
     const key = (a.url || a.title || a.aiSummary).slice(0, 200);
     if (key && !seen.has(key)) {
       seen.add(key);

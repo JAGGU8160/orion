@@ -82,10 +82,27 @@ export async function fetchDigest(): Promise<DigestBuckets> {
     )
     .filter((a) => a.aiSummary || a.title);
 
+  // Drop articles older than 30 days and funding/industry noise
+  const THIRTY_DAYS_AGO = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const FUNDING_NOISE_KW = [
+    'funding', 'raises', 'raised', 'valuation', 'investor', 'ipo',
+    'acquisition', 'acquires', 'merger', 'ceo appointed', 'executive',
+    'contract awarded', 'satellite internet', 'broadband',
+  ];
+  function isFundingNoise(title: string) {
+    const t = title.toLowerCase();
+    return FUNDING_NOISE_KW.some(kw => t.includes(kw));
+  }
+
+  const fresh = articles.filter(a => {
+    const ts = Date.parse(a.timestamp) || 0;
+    return ts >= THIRTY_DAYS_AGO && !isFundingNoise(a.title);
+  });
+
   // Deduplicate
   const seen = new Set<string>();
   const deduped: Article[] = [];
-  for (const a of articles) {
+  for (const a of fresh) {
     const key = (a.url || a.title || a.aiSummary).slice(0, 200);
     if (key && !seen.has(key)) {
       seen.add(key);
@@ -116,10 +133,12 @@ export async function fetchDigest(): Promise<DigestBuckets> {
   const launches = deduped.filter((a) => a.category === "Launch");
   const generalNews = deduped.filter((a) => a.category === "General");
 
-  // Top 5 — most exciting non-APOD stories with a URL or image
-  const topStoryCandidates = deduped.filter(
-    (a) => a.category !== "APOD" && (a.url || a.imageUrl) && a.title
-  );
+  // Top 5 — most exciting non-APOD stories from last 14 days with a URL or image
+  const FOURTEEN_DAYS_AGO = Date.now() - 14 * 24 * 60 * 60 * 1000;
+  const topStoryCandidates = deduped.filter((a) => {
+    const ts = Date.parse(a.timestamp) || 0;
+    return a.category !== "APOD" && (a.url || a.imageUrl) && a.title && ts >= FOURTEEN_DAYS_AGO;
+  });
   topStoryCandidates.sort(
     (a, b) => (b.excitementScore || 0) - (a.excitementScore || 0)
   );

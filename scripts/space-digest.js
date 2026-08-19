@@ -65,7 +65,13 @@ async function fetchRSS(url, limit = 8) {
         return r ? r[1].replace(/<[^>]+>/g, '').trim() : '';
       };
       const link = tag('link') || block.match(/<link>\s*([^<]+)\s*<\/link>/i)?.[1]?.trim() || '';
-      items.push({ title: tag('title'), description: tag('description').slice(0, 400), link, pubDate: tag('pubDate') });
+      // Extract image from enclosure or media:content
+      const enclosure = block.match(/<enclosure[^>]+url=["']([^"']+)["'][^>]*type=["']image[^"']*["']/i)
+                     || block.match(/<enclosure[^>]+type=["']image[^"']*["'][^>]*url=["']([^"']+)["']/i);
+      const mediaContent = block.match(/<media:content[^>]+url=["']([^"']+)["'][^>]*medium=["']image["']/i)
+                        || block.match(/<media:thumbnail[^>]+url=["']([^"']+)["']/i);
+      const imageUrl = enclosure?.[1] || mediaContent?.[1] || '';
+      items.push({ title: tag('title'), description: tag('description').slice(0, 400), link, pubDate: tag('pubDate'), imageUrl });
     }
     return items.filter(i => i.title).slice(0, limit);
   } catch (e) { console.warn(`SKIP RSS ${url} → ${e.message}`); return []; }
@@ -189,7 +195,7 @@ async function main() {
       seen.add(a.link);
       normalized.push({ type: 'astronomy_event', source,
         title: clean(a.title), summary: clean(a.description, 280),
-        url: a.link, image_url: '', published: a.pubDate || '',
+        url: a.link, image_url: a.imageUrl || '', published: a.pubDate || '',
         local_relevance: 'medium' });
     }
   }
