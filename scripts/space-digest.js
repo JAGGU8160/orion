@@ -6,6 +6,7 @@ const GROQ_KEY    = process.env.GROQ_API_KEY;
 const TG_TOKEN    = process.env.TELEGRAM_BOT_TOKEN;
 const TG_CHAT     = '-1003942481207';
 const SHEET_URL   = process.env.GOOGLE_SHEET_URL; // Apps Script web app URL
+const NASA_KEY    = process.env.NASA_API_KEY || 'DEMO_KEY';
 
 // ─── helpers ───────────────────────────────────────────────────────────────
 
@@ -65,12 +66,12 @@ async function fetchRSS(url, limit = 8) {
         return r ? r[1].replace(/<[^>]+>/g, '').trim() : '';
       };
       const link = tag('link') || block.match(/<link>\s*([^<]+)\s*<\/link>/i)?.[1]?.trim() || '';
-      // Extract image from enclosure or media:content
-      const enclosure = block.match(/<enclosure[^>]+url=["']([^"']+)["'][^>]*type=["']image[^"']*["']/i)
-                     || block.match(/<enclosure[^>]+type=["']image[^"']*["'][^>]*url=["']([^"']+)["']/i);
-      const mediaContent = block.match(/<media:content[^>]+url=["']([^"']+)["'][^>]*medium=["']image["']/i)
-                        || block.match(/<media:thumbnail[^>]+url=["']([^"']+)["']/i);
-      const imageUrl = enclosure?.[1] || mediaContent?.[1] || '';
+      // Extract image: try enclosure (image type), media:thumbnail, then first <img src> in content body
+      const enclosure = block.match(/<enclosure[^>]+type=["']image[^"']*["'][^>]+url=["']([^"']+)["']/i)
+                     || block.match(/<enclosure[^>]+url=["']([^"']+)["'][^>]*type=["']image[^"']*["']/i);
+      const mediaThumbnail = block.match(/<media:thumbnail[^>]+url=["']([^"']+)["']/i);
+      const contentImg = block.match(/src=["'](https?:[^"']+\.(?:jpg|jpeg|png|webp))["']/i);
+      const imageUrl = enclosure?.[1] || mediaThumbnail?.[1] || contentImg?.[1] || '';
       items.push({ title: tag('title'), description: tag('description').slice(0, 400), link, pubDate: tag('pubDate'), imageUrl });
     }
     return items.filter(i => i.title).slice(0, limit);
@@ -170,8 +171,8 @@ async function main() {
     fetchRSS('https://skyandtelescope.org/astronomy-news/feed/', 8),
     fetchRSS('https://www.universetoday.com/feed/', 8),
     fetchRSS('https://blogs.nasa.gov/watch_the_skies/feed/', 6),
-    fetchJson('https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY'),
-    fetchJson('https://api.nasa.gov/neo/rest/v1/feed?api_key=DEMO_KEY'),
+    fetchJson(`https://api.nasa.gov/planetary/apod?api_key=${NASA_KEY}`),
+    fetchJson(`https://api.nasa.gov/neo/rest/v1/feed?api_key=${NASA_KEY}`),
     fetchJson('https://api.visibleplanets.dev/v3?latitude=22.2587&longitude=71.1924&constellation=true'),
     fetchJson('https://api.open-notify.org/astros.json'),
   ]);
