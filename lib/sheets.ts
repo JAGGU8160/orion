@@ -125,7 +125,39 @@ export async function fetchDigest(): Promise<DigestBuckets> {
   const localSky = deduped.filter(
     (a) => a.category === "LocalSky" || a.type === "local_sky"
   );
-  const apod = deduped.find((a) => a.category === "APOD" || a.type === "apod") || null;
+  let apod: Article | null = deduped.find((a) => a.category === "APOD" || a.type === "apod") || null;
+
+  // If sheet has no APOD, fetch directly from NASA API as fallback
+  if (!apod) {
+    try {
+      const nasaKey = process.env.NASA_API_KEY || "DEMO_KEY";
+      const apodRes = await fetch(
+        `https://api.nasa.gov/planetary/apod?api_key=${nasaKey}`,
+        { next: { revalidate: 21600 } } // cache 6 hours
+      );
+      if (apodRes.ok) {
+        const d = await apodRes.json();
+        if (d?.title && d?.explanation) {
+          apod = {
+            timestamp: new Date().toISOString(),
+            type: "apod",
+            source: "NASA APOD",
+            title: "NASA Picture of the Day: " + d.title,
+            aiSummary: d.explanation.slice(0, 400),
+            tweet: "",
+            localNote: "",
+            category: "APOD",
+            localRelevance: "medium",
+            url: d.hdurl || d.url || "",
+            imageUrl: d.url || "",
+            publishedAt: d.date || new Date().toISOString(),
+          };
+        }
+      }
+    } catch {
+      // silently skip — APOD stays null
+    }
+  }
   const asteroids = deduped.filter(
     (a) => a.category === "Asteroid" || a.type === "asteroid"
   );
