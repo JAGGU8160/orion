@@ -1,4 +1,5 @@
 import type { Article, Category, DigestBuckets } from "./types";
+import { fetchLive } from "./live";
 import {
   computeMoonPhase,
   computeObservationQuality,
@@ -94,7 +95,22 @@ export async function fetchDigest(): Promise<DigestBuckets> {
     return FUNDING_NOISE_KW.some(kw => t.includes(kw));
   }
 
-  const fresh = articles.filter(a => {
+  // Supplement the sheet with live data so the page stays fresh even if the pipeline stalls
+  const live = await fetchLive();
+  const sheetNewest = Math.max(0, ...articles.map((a) => Date.parse(a.timestamp) || 0));
+  const liveItems = live.filter((l) => {
+    if (l.category === "Asteroid" || l.category === "ISS") return true;
+    return (Date.parse(l.timestamp) || 0) > sheetNewest - 24 * 60 * 60 * 1000;
+  });
+  // Live asteroid/ISS data replaces stale sheet entries of the same kind
+  const hasLiveAst = liveItems.some((l) => l.category === "Asteroid");
+  const hasLiveIss = liveItems.some((l) => l.category === "ISS");
+  const base = articles.filter(
+    (a) => !(hasLiveAst && a.category === "Asteroid") && !(hasLiveIss && a.category === "ISS")
+  );
+  const merged = [...liveItems, ...base];
+
+  const fresh = merged.filter(a => {
     const ts = Date.parse(a.timestamp) || 0;
     return ts >= THIRTY_DAYS_AGO && !isFundingNoise(a.title);
   });
